@@ -1,0 +1,283 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Uniswap V3 开发手册 - Uniswap V3 Development Book</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="A book that teaches how to build a clone of Uniswap V3 in Solidity from scratch.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="index.html" class="active">Uniswap V3 开发手册</a></li><li class="chapter-item expanded affix "><li class="part-title">里程碑 0. 背景</li><li class="chapter-item expanded "><a href="milestone_0/introduction-to-markets.html"><strong aria-hidden="true">1.</strong> 市场介绍</a></li><li class="chapter-item expanded "><a href="milestone_0/constant-function-market-maker.html"><strong aria-hidden="true">2.</strong> 恒定函数做市商</a></li><li class="chapter-item expanded "><a href="milestone_0/uniswap-v3.html"><strong aria-hidden="true">3.</strong> Uniswap V3</a></li><li class="chapter-item expanded "><a href="milestone_0/dev-environment.html"><strong aria-hidden="true">4.</strong> 开发环境</a></li><li class="chapter-item expanded "><a href="milestone_0/what-we-will-build.html"><strong aria-hidden="true">5.</strong> 我们将要构建什么</a></li><li class="chapter-item expanded affix "><li class="part-title">里程碑 1. 第一次交换</li><li class="chapter-item expanded "><a href="milestone_1/introduction.html"><strong aria-hidden="true">6.</strong> 介绍</a></li><li class="chapter-item expanded "><a href="milestone_1/calculating-liquidity.html"><strong aria-hidden="true">7.</strong> 计算流动性</a></li><li class="chapter-item expanded "><a href="milestone_1/providing-liquidity.html"><strong aria-hidden="true">8.</strong> 提供流动性</a></li><li class="chapter-item expanded "><a href="milestone_1/first-swap.html"><strong aria-hidden="true">9.</strong> 第一次交换</a></li><li class="chapter-item expanded "><a href="milestone_1/manager-contract.html"><strong aria-hidden="true">10.</strong> 管理合约</a></li><li class="chapter-item expanded "><a href="milestone_1/deployment.html"><strong aria-hidden="true">11.</strong> 部署</a></li><li class="chapter-item expanded "><a href="milestone_1/user-interface.html"><strong aria-hidden="true">12.</strong> 用户界面</a></li><li class="chapter-item expanded affix "><li class="part-title">里程碑 2. 第二次交换</li><li class="chapter-item expanded "><a href="milestone_2/introduction.html"><strong aria-hidden="true">13.</strong> 介绍</a></li><li class="chapter-item expanded "><a href="milestone_2/output-amount-calculation.html"><strong aria-hidden="true">14.</strong> 输出金额计算</a></li><li class="chapter-item expanded "><a href="milestone_2/math-in-solidity.html"><strong aria-hidden="true">15.</strong> Solidity中的数学运算</a></li><li class="chapter-item expanded "><a href="milestone_2/tick-bitmap-index.html"><strong aria-hidden="true">16.</strong> Tick位图索引</a></li><li class="chapter-item expanded "><a href="milestone_2/generalize-minting.html"><strong aria-hidden="true">17.</strong> 通用铸造</a></li><li class="chapter-item expanded "><a href="milestone_2/generalize-swapping.html"><strong aria-hidden="true">18.</strong> 通用交换</a></li><li class="chapter-item expanded "><a href="milestone_2/quoter-contract.html"><strong aria-hidden="true">19.</strong> 报价合约</a></li><li class="chapter-item expanded "><a href="milestone_2/user-interface.html"><strong aria-hidden="true">20.</strong> 用户界面</a></li><li class="chapter-item expanded affix "><li class="part-title">里程碑 3. 跨Tick交换</li><li class="chapter-item expanded "><a href="milestone_3/introduction.html"><strong aria-hidden="true">21.</strong> 介绍</a></li><li class="chapter-item expanded "><a href="milestone_3/different-ranges.html"><strong aria-hidden="true">22.</strong> 不同价格范围</a></li><li class="chapter-item expanded "><a href="milestone_3/cross-tick-swaps.html"><strong aria-hidden="true">23.</strong> Cross-Tick 交换</a></li><li class="chapter-item expanded "><a href="milestone_3/slippage-protection.html"><strong aria-hidden="true">24.</strong> 滑点保护</a></li><li class="chapter-item expanded "><a href="milestone_3/liquidity-calculation.html"><strong aria-hidden="true">25.</strong> 流动性计算</a></li><li class="chapter-item expanded "><a href="milestone_3/more-on-fixed-point-numbers.html"><strong aria-hidden="true">26.</strong> 关于定点数的更多内容</a></li><li class="chapter-item expanded "><a href="milestone_3/flash-loans.html"><strong aria-hidden="true">27.</strong> 闪电贷</a></li><li class="chapter-item expanded "><a href="milestone_3/user-interface.html"><strong aria-hidden="true">28.</strong> 用户界面</a></li><li class="chapter-item expanded affix "><li class="part-title">里程碑 4. 多池交换</li><li class="chapter-item expanded "><a href="milestone_4/introduction.html"><strong aria-hidden="true">29.</strong> 介绍</a></li><li class="chapter-item expanded "><a href="milestone_4/factory-contract.html"><strong aria-hidden="true">30.</strong> 工厂合约</a></li><li class="chapter-item expanded "><a href="milestone_4/path.html"><strong aria-hidden="true">31.</strong> 交换路径</a></li><li class="chapter-item expanded "><a href="milestone_4/multi-pool-swaps.html"><strong aria-hidden="true">32.</strong> 多池交换</a></li><li class="chapter-item expanded "><a href="milestone_4/user-interface.html"><strong aria-hidden="true">33.</strong> 用户界面</a></li><li class="chapter-item expanded "><a href="milestone_4/tick-rounding.html"><strong aria-hidden="true">34.</strong> Tick舍入</a></li><li class="chapter-item expanded affix "><li class="part-title">里程碑 5. 费用和价格预言机</li><li class="chapter-item expanded "><a href="milestone_5/introduction.html"><strong aria-hidden="true">35.</strong> 介绍</a></li><li class="chapter-item expanded "><a href="milestone_5/swap-fees.html"><strong aria-hidden="true">36.</strong> 交换费用</a></li><li class="chapter-item expanded "><a href="milestone_5/flash-loan-fees.html"><strong aria-hidden="true">37.</strong> 闪电贷费用</a></li><li class="chapter-item expanded "><a href="milestone_5/protocol-fees.html"><strong aria-hidden="true">38.</strong> 协议费用</a></li><li class="chapter-item expanded "><a href="milestone_5/price-oracle.html"><strong aria-hidden="true">39.</strong> 价格预言机</a></li><li class="chapter-item expanded "><a href="milestone_5/user-interface.html"><strong aria-hidden="true">40.</strong> 用户界面</a></li><li class="chapter-item expanded affix "><li class="part-title">里程碑 6: NFT 头寸</li><li class="chapter-item expanded "><a href="milestone_6/introduction.html"><strong aria-hidden="true">41.</strong> 介绍</a></li><li class="chapter-item expanded "><a href="milestone_6/erc721-overview.html"><strong aria-hidden="true">42.</strong> ERC721概述</a></li><li class="chapter-item expanded "><a href="milestone_6/nft-manager.html"><strong aria-hidden="true">43.</strong> NFT管理器</a></li><li class="chapter-item expanded "><a href="milestone_6/nft-renderer.html"><strong aria-hidden="true">44.</strong> NFT渲染器</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Uniswap V3 Development Book</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/Jeiwan/uniswapv3-book" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/Jeiwan/uniswapv3-book/edit/main/src/README.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
+<h1 id="uniswap-v3-开发手册中文版"><a class="header" href="#uniswap-v3-开发手册中文版">Uniswap V3 开发手册（中文版）</a></h1>
+<p><em>本书翻译自<a href="https://github.com/Jeiwan/uniswapv3-book">Uniswap V3 Development Book</a>，非常感谢作者 Jeiwan 的辛勤工作。现将其翻译成中文，方便大家学习。希望在defi领域有更多的朋友加入，一起学习，一起进步。</em></p>
+<p><em>由于本人水平有限，翻译校对难免有错误，欢迎大家指正。</em></p>
+<p align="center">
+<img src="/images/book.jpg" alt="Uniswap V3 开发手册封面" width="480"/>
+</p>
+<p>欢迎来到去中心化金融和自动化做市商的世界，本书将成为您在这个神秘而有趣的世界中的向导，我们将一起构建当今去中心化金融中最有趣和最重要的应用之 一 <strong>Uniswap V3</strong> !</p>
+<p>本书将指导您完成去中心化应用的开发,包括:</p>
+<ul>
+<li>智能合约开发(使用<a href="https://docs.soliditylang.org/en/latest/index.html">Solidity</a>);</li>
+<li>合约测试和部署(使用<a href="https://github.com/foundry-rs/foundry">Foundry</a>的Forge和Anvil);</li>
+<li>去中心化交易所的设计和数学原理;</li>
+<li>交易所前端应用程序的开发(<a href="https://reactjs.org/">React</a>和<a href="https://metamask.io/">MetaMask</a>)。</li>
+</ul>
+<p><strong>本书不适合完全的初学者。</strong></p>
+<p>我希望您是一位有经验的开发者,曾用任何编程语言进行过编程。如果您了解<a href="https://docs.soliditylang.org/en/v0.8.17/introduction-to-smart-contracts.html">Solidity的语法</a>(本书的主要编程语言)那就更好了。如果不了解也没关系:在我们的旅程中,我们会学到很多关于Solidity和以太坊虚拟机的知识。</p>
+<p><strong>本书适合区块链初学者。</strong></p>
+<p>如果您只是听说过区块链并对其感兴趣，但还没有机会深入了解，那么这本书就是为您准备的！是的，就是为您！您将学习区块链(特别是以太坊)如何工作，如何编写和部署智能合约，以及如何在您的计算机上运行和测试它们。</p>
+<p>好了,让我们开始吧!</p>
+<h2 id="有用的链接"><a class="header" href="#有用的链接">有用的链接</a></h2>
+<ol>
+<li>本书英文版可在以下网址获取： <a href="https://uniswapv3book.com/">https://uniswapv3book.com/</a></li>
+<li>本书英文版托管在GitHub上： <a href="https://github.com/Jeiwan/uniswapv3-book">https://github.com/Jeiwan/uniswapv3-book</a></li>
+<li>所有源代码托管在单独的仓库中： <a href="https://github.com/Jeiwan/uniswapv3-code">https://github.com/Jeiwan/uniswapv3-code</a></li>
+<li>如果您认为可以帮助Uniswap，他们有<a href="https://www.notion.so/unigrants/Welcome-to-UNI-Grants-6e3e84967a984a5fb127ae749649ddc9">一个资助计划</a>。</li>
+<li>如果您对DeFi和区块链感兴趣，<a href="https://twitter.com/jeiwan7">在Twitter上关注作者</a>。</li>
+</ol>
+<h2 id="有任何问题"><a class="header" href="#有任何问题">有任何问题？</a></h2>
+<p>每个里程碑在<a href="https://github.com/Jeiwan/uniswapv3-book/discussions">GitHub讨论区</a>都有自己的部分。如果书中有任何不清楚的地方,请随时提问！</p>
+<hr />
+<h2 id="完全初学者从哪里开始"><a class="header" href="#完全初学者从哪里开始">完全初学者从哪里开始？</a></h2>
+<p>对于了解恒定函数做市商和Uniswap的人来说，这本书会很容易理解。但如果您是去中心化交易所的完全初学者，以下是我建议的开始方式：</p>
+<ol>
+<li>阅读作者的Uniswap V1系列。它涵盖了Uniswap的基础知识，代码也更简单。如果您有一些Solidity经验，可以跳过代码部分，因为它非常基础。
+<ol>
+<li><a href="https://jeiwan.net/posts/programming-defi-uniswap-1/">编程DeFi: Uniswap. 第1部分</a></li>
+<li><a href="https://jeiwan.net/posts/programming-defi-uniswap-2/">编程DeFi: Uniswap. 第2部分</a></li>
+<li><a href="https://jeiwan.net/posts/programming-defi-uniswap-3/">编程DeFi: Uniswap. 第3部分</a></li>
+</ol>
+</li>
+<li>阅读作者的Uniswap V2系列。作者在这里没有深入探讨数学和底层概念,因为它们在V1系列中已经涉及，但V2的代码值得熟悉——它有望教会您一种关于智能合约编程的不同的思维方式(这与我们通常编写程序的方式不同)。
+<ol>
+<li><a href="https://jeiwan.net/posts/programming-defi-uniswapv2-1/">编程DeFi: Uniswap V2. 第1部分</a></li>
+<li><a href="https://jeiwan.net/posts/programming-defi-uniswapv2-2/">编程DeFi: Uniswap V2. 第2部分</a></li>
+<li><a href="https://jeiwan.net/posts/programming-defi-uniswapv2-3/">编程DeFi: Uniswap V2. 第3部分</a></li>
+<li><a href="https://jeiwan.net/posts/programming-defi-uniswapv2-4/">编程DeFi: Uniswap V2. 第4部分</a></li>
+</ol>
+</li>
+</ol>
+<p>如果数学对于您来讲是一个问题，可以考虑学习Khan Academy的<a href="https://www.khanacademy.org/math/algebra">代数1</a>和<a href="https://www.khanacademy.org/math/algebra2">代数2</a>课程。Uniswap的数学并不难，但它需要基本的代数运算技能。</p>
+<h2 id="uniswap资助计划"><a class="header" href="#uniswap资助计划">Uniswap资助计划</a></h2>
+<p align="center">
+<img src="/images/uf_logo.png" alt="Uniswap Foundation标志"/>
+</p>
+<p>为了写这本书，作者获得了<a href="https://uniswapfoundation.mirror.xyz/">Uniswap Foundation</a>的资助。没有这笔资助,作者可能就没有足够的动力和耐心深入研究Uniswap的最深层次并完成这本书。这笔资助也是本书开源和对任何人免费的主要原因。您可以<a href="https://www.unigrants.org/">了解更多关于Uniswap资助计划的信息</a>(也许可以申请！)。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+                            <a rel="next prefetch" href="milestone_0/introduction-to-markets.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+                    <a rel="next prefetch" href="milestone_0/introduction-to-markets.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
