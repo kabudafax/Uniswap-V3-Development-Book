@@ -1,118 +1,114 @@
-# Uniswap V3 Development Book
+# Uniswap V3 开发书籍
 
 <p align="center">
-<img src="/src/images/cover.png" alt="Uniswap V3 Development Book cover" width="360"/>
+<img src="/src/images/cover.png" alt="Uniswap V3 开发书籍封面" width="360"/>
 </p>
 
 
 <p align="center">
-👉&nbsp;<a href="https://uniswapv3book.com/">READ ONLINE</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="https://uniswapv3book.com/print.html">PRINT OR SAVE AS PDF</a>&nbsp;👈
+👉&nbsp;<a href="https://uniswapv3book.com/">在线阅读</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="https://uniswapv3book.com/print.html">打印或保存为PDF</a>&nbsp;👈
 </p>
 
-This book will teach how to develop an advanced decentralized application! Specifically, we'll be building a clone of
-[Uniswap V3](https://uniswap.org/), which is a decentralized exchange.
+本书将教你如何开发一个高级去中心化应用！具体来说，我们将构建一个[Uniswap V3](https://uniswap.org/)的克隆版，这是一个去中心化交易所。
 
-## Why Uniswap?
-- It implements a very simple mathematical concept, `x * y = k`, which still makes it very powerful.
-- It's an advanced application that has a thick layer of engineering on top of the simple formula.
-- It's permissionless and battle-tested. Learning from an application that's been running in production for
-several years and handling billions of dollars will make you a better developer.
+## 为什么选择Uniswap？
+- 它实现了一个非常简单的数学概念，`x * y = k`，但这使它非常强大。
+- 它是一个高级应用，在简单公式之上有一层厚厚的工程。
+- 它是无许可的并且经过实战检验。从一个已经在生产环境中运行多年并处理数十亿美元的应用中学习，将使你成为更好的开发者。
 
-## What we'll build
+## 我们将构建什么
 
-![Front-end application screenshot](/screenshot.png)
+![前端应用截图](/screenshot.png)
 
-We'll build a full clone of Uniswap V3. It **won't be an exact copy** and it **won't be production-ready** because we'll
-do something in our own way and we'll **definitely** introduce multiple bugs. So, don't deploy this to the mainnet!
+我们将构建一个完整的Uniswap V3克隆版。它**不会是完全相同的副本**，也**不会是生产就绪的**，因为我们会以自己的方式做一些事情，而且我们**肯定**会引入多个bug。所以，不要将其部署到主网！
 
-While our focus will primarily be on smart contracts, we'll also build a front-end application as a side hustle. 🙂
-I'm not a front-end developer and I cannot make a front-end application better than you, but I can show you how a
-decentralized exchange can be integrated into a front-end application.
+虽然我们的重点主要是智能合约，但我们也会顺便构建一个前端应用。🙂
+我不是前端开发者，我无法做出比你更好的前端应用，但我可以向你展示如何将去中心化交易所集成到前端应用中。
 
-The full code of what we'll build is stored in a separate repository:
+我们将构建的完整代码存储在一个单独的仓库中：
 
 https://github.com/Jeiwan/uniswapv3-code
 
-You can read this book at:
+你可以在以下地址阅读本书：
 
 https://uniswapv3book.com/
 
-### Questions?
+### 有问题？
 
-Each milestone has its own section in [the GitHub Discussions](https://github.com/Jeiwan/uniswapv3-book/discussions).
-Don't hesitate to ask questions about anything that's not clear in the book!
+每个里程碑在[GitHub讨论区](https://github.com/Jeiwan/uniswapv3-book/discussions)都有自己的部分。
+如果书中有任何不清楚的地方，不要犹豫，尽管提问！
 
-## Table of Contents
+## 目录
 
-- Milestone 0. Introduction
-  1. Introduction to markets
-  1. Constant Function Market Makers
-  1. Uniswap V3
-  1. Development Environment
-  1. What We'll Build
-- Milestone 1. First Swap
-  1. Introduction
-  1. Calculating Liquidity
-  1. Providing Liquidity
-  1. First Swap
-  1. Manager Contract
-  1. Deployment
-  1. User Interface
-- Milestone 2. Second Swap
-  1. Introduction
-  1. Output Amount Calculation
-  1. Math in Solidity
-  1. Tick Bitmap Index
-  1. Generalize Minting
-  1. Generalize Swapping
-  1. Quoter Contract
-  1. User Interface
-- Milestone 3. Cross-tick Swaps
-  1. Introduction
-  1. Different Price Ranges
-  1. Cross-Tick Swaps
-  1. Slippage Protection
-  1. Liquidity Calculation
-  1. A Little Bit More on Fixed-point Numbers
-  1. Flash Loans
-  1. User Interface
+- 里程碑 0. 介绍
+  1. 市场介绍
+  2. 恒定函数做市商
+  3. Uniswap V3
+  4. 开发环境
+  5. 我们将构建什么
+- 里程碑 1. 第一次交换
+  1. 介绍
+  2. 计算流动性
+  3. 提供流动性
+  4. 第一次交换
+  5. 管理合约
+  6. 部署
+  7. 用户界面
+- 里程碑 2. 第二次交换
+  1. 介绍
+  2. 输出金额计算
+  3. Solidity中的数学
+  4. Tick位图索引
+  5. 通用化铸造
+  6. 通用化交换
+  7. 报价合约
+  8. 用户界面
+- 里程碑 3. 跨Tick交换
+  1. 介绍
+  2. 不同价格范围
+  3. 跨Tick交换
+  4. 滑点保护
+  5. 流动性计算
+  6. 关于定点数的更多内容
+  7. 闪电贷
+  8. 用户界面
 
-- Milestone 4. Multi-pool Swaps
-  1. Introduction
-  1. Factory Contract
-  1. Swap Path
-  1. Multi-pool Swaps
-  1. User Interface
-  1. Tick Rounding
-- Milestone 5. Fees and Price Oracle
-  1. Introduction
-  1. Swap Fees
-  1. Flash Loan Fees
-  1. Protocol Fees
-  1. Price Oracle
-  1. User Interface
-- Milestone 6: NFT positions
-  1. Introduction
-  1. ERC721 Overview
-  1. NFT Manager
-  1. NFT Renderer
+- 里程碑 4. 多池交换
+  1. 介绍
+  2. 工厂合约
+  3. 交换路径
+  4. 多池交换
+  5. 用户界面
+  6. Tick舍入
+- 里程碑 5. 费用和价格预言机
+  1. 介绍
+  2. 交换费用
+  3. 闪电贷费用
+  4. 协议费用
+  5. 价格预言机
+  6. 用户界面
+- 里程碑 6: NFT头寸
+  1. 介绍
+  2. ERC721概述
+  3. NFT管理器
+  4. NFT渲染器
 
-## Running locally
+## 本地运行
 
-To run the book locally:
-1. Install [Rust](https://www.rust-lang.org/).
-1. Install [mdBook](https://github.com/rust-lang/mdBook):
+要在本地运行本书：
+1. 安装[Rust](https://www.rust-lang.org/)。
+2. 安装[mdBook](https://github.com/rust-lang/mdBook)：
     ```shell
     $ cargo install mdbook
     $ cargo install mdbook-katex
     ```
-1. Clone the repo:
+3. 克隆仓库：
     ```shell
     $ git clone https://github.com/Jeiwan/uniswapv3-book
     $ cd uniswapv3-book
     ```
-1. Run:
+4. 运行：
     ```shell
     $ mdbook serve --open
     ```
-1. Visit http://localhost:3000/ (or whatever URL the previous command outputs!)
+5. 访问 http://localhost:3000/（或上一个命令输出的任何URL）！
