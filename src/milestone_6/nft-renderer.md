@@ -1,15 +1,15 @@
-# NFT Renderer
+# NFT渲染器
 
-Now we need to build an NFT renderer: a library that will handle calls to `tokenURI` in the NFT manager contract. It will render JSON metadata and an SVG for each minted token. As we discussed earlier, we'll use the data URI format, which requires base64 encoding–this means we'll need a base64 encoder in Solidity. But first, let's look at what our tokens will look like.
+现在我们需要构建一个NFT渲染器：这是一个库，用于处理NFT管理器合约中的`tokenURI`调用。它将为每个铸造的token渲染JSON元数据和SVG。正如我们之前讨论的，我们将使用数据URI格式，这需要base64编码——这意味着我们需要在Solidity中使用base64编码器。但首先，让我们看看我们的token会是什么样子。
 
+## SVG模板
 
-## SVG Template
+我构建了这个简化版的Uniswap V3 NFT：
 
-I built this simplified variation of the Uniswap V3 NFTs:
+![NFT token的SVG模板](images/nft_template.png)
 
-![SVG template for NFT tokens](images/nft_template.png)
+以下是它的代码：
 
-This is what its code looks like;
 ```svg
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 480">
   <style>
@@ -51,33 +51,36 @@ This is what its code looks like;
 </svg>
 ```
 
-This is a simple SVG template, and we're going to make a Solidity contract that fills the fields in this template and returns it in `tokenURI`. The fields that will be filled uniquely for each token:
-1. the color of the background, which is set in the first two `rect`s; the hue component (330 in the template) will be unique for each token;
-1. the names of the tokens of a pool the position belongs to (WETH/USDC in the template);
-1. the fee of a pool (0.05%);
-1. tick values of the boundaries of the position (123456).
+这是一个简单的SVG模板，我们将创建一个Solidity合约来填充这个模板中的字段，并在`tokenURI`中返回它。每个token将唯一填充的字段包括：
 
-Here are examples of NFTs our contract will be able to produce:
+1. 背景颜色，在前两个`rect`中设置；色相分量（模板中为330）将对每个token唯一；
 
-![NFT example 1](images/nft_example_2.png)
-![NFT example 2](images/nft_example_3.png)
+2. position所属池子的token名称（模板中为WETH/USDC）；
 
+3. 池子的费用（0.05%）；
 
-## Dependencies
+4. position边界的tick值（123456）。
 
-Solidity doesn't provide a native Base64 encoding tool so we'll use a third-party one. Specifically, we'll use [the one from OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Base64.sol).
+以下是我们的合约能够生成的NFT示例：
 
-Another tedious thing about Solidity is that it has very poor support for operations with strings. For example, there's no way to convert integers to strings–but we need that to render pool fee and position ticks in the SVG template. We'll use [the Strings library from OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Strings.sol) to do that.
+![NFT示例1](images/nft_example_2.png)
+![NFT示例2](images/nft_example_3.png)
 
-## Format of the Result
+## 依赖
 
-The data produced by the renderer will have this format:
+Solidity没有提供原生的Base64编码工具，所以我们将使用第三方工具。具体来说，我们将使用[OpenZeppelin的Base64库](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Base64.sol)。
+
+Solidity在字符串操作方面的支持也很薄弱。例如，没有直接的方法将整数转换为字符串——但我们需要这个功能来在SVG模板中渲染池子费用和position的tick。我们将使用[OpenZeppelin的Strings库](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Strings.sol)来实现这一点。
+
+## 结果格式
+
+渲染器生成的数据将具有以下格式：
 
 ```
 data:application/json;base64,BASE64_ENCODED_JSON
 ```
 
-The JSON will look like this:
+JSON将如下所示：
 ```json
 {
   "name": "Uniswap V3 Position",
@@ -86,11 +89,12 @@ The JSON will look like this:
 }
 ```
 
-The image will be the above SVG template filled with position data and encoded in Base64.
+图像将是上述SVG模板，填充了position数据并使用Base64编码。
 
-## Implementing the Renderer
+## 实现渲染器
 
-We'll implement the renderer in a separate library contract to not make the NFT manager contract too noisy:
+我们将在一个单独的库合约中实现渲染器，以避免NFT管理器合约变得过于复杂：
+
 
 ```solidity
 library NFTRenderer {
@@ -108,9 +112,10 @@ library NFTRenderer {
 }
 ```
 
-In the `render` function, we'll first render an SVG, then a JSON. To keep the code cleaner, we'll break down each step into smaller steps.
+在`render`函数中，我们首先渲染SVG，然后是JSON。为了保持代码的清晰度，我们将每个步骤分解为更小的步骤。
 
-We begin with fetching token symbols:
+我们从获取token符号开始：
+
 ```solidity
 function render(RenderParams memory params) {
     IUniswapV3Pool pool = IUniswapV3Pool(params.pool);
@@ -122,9 +127,10 @@ function render(RenderParams memory params) {
     ...
 ```
 
-### SVG Rendering
+### SVG渲染
 
-Then we can render the SVG template:
+然后我们可以渲染SVG模板：
+
 ```solidity
 string memory image = string.concat(
     "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 480'>",
@@ -138,13 +144,18 @@ string memory image = string.concat(
 );
 ```
 
-The template is broken down into multiple steps:
-1. first comes the header, which includes the CSS styles;
-1. then the background is rendered;
-1. then the top position information is rendered (token symbols and fee);
-1. finally, the bottom information is rendered (position ticks).
+模板被分解为多个步骤：
 
-The background is simply two `rect`s. To render them we need to find the unique hue of this token and then we concatenate all the pieces together:
+1. 首先是头部，包括CSS样式；
+
+2. 然后渲染背景；
+
+3. 接着渲染顶部position信息（token符号和费用）；
+
+4. 最后，渲染底部信息（position的tick）。
+
+背景只是两个`rect`。要渲染它们，我们需要找到这个token的唯一色相，然后将所有部分连接在一起：
+
 ```solidity
 function renderBackground(
     address owner,
@@ -165,7 +176,8 @@ function renderBackground(
 }
 ```
 
-The top template renders token symbols and pool fees:
+顶部模板渲染token符号和池子费用：
+
 ```solidity
 function renderTop(
     string memory symbol0,
@@ -187,7 +199,7 @@ function renderTop(
 }
 ```
 
-Fees are rendered as numbers with a fractional part. Since all possible fees are known in advance we don't need to convert integers to fractional numbers and can simply hardcode the values:
+费用被渲染为带有小数部分的数字。由于所有可能的费用都是预先知道的，我们不需要将整数转换为小数，可以简单地硬编码这些值：
 ```solidity
 function feeToText(uint256 fee)
     internal
@@ -202,7 +214,7 @@ function feeToText(uint256 fee)
 }
 ```
 
-In the bottom part, we render position ticks:
+在底部部分，我们渲染position的tick：
 ```solidity
 function renderBottom(int24 lowerTick, int24 upperTick)
     internal
@@ -222,7 +234,7 @@ function renderBottom(int24 lowerTick, int24 upperTick)
 }
 ```
 
-Since ticks can be positive and negative, we need to render them properly (with or without the minus sign):
+由于tick可以是正数或负数，我们需要正确地渲染它们（带或不带负号）：
 ```solidity
 function tickToText(int24 tick)
     internal
@@ -238,9 +250,9 @@ function tickToText(int24 tick)
 }
 ```
 
-### JSON Rendering
+### JSON渲染
 
-Now, let's return to the `render` function and render the JSON. First, we need to render a token description:
+现在，让我们回到`render`函数并渲染JSON。首先，我们需要渲染token的描述：
 ```solidity
 function render(RenderParams memory params) {
     ... SVG rendering ...
@@ -256,7 +268,7 @@ function render(RenderParams memory params) {
     ...
 ```
 
-A token description is a text string that contains all the same information that we render in the token's SVG:
+token描述是一个文本字符串，包含我们在token的SVG中渲染的所有相同信息：
 ```solidity
 function renderDescription(
     string memory symbol0,
@@ -279,7 +291,7 @@ function renderDescription(
 }
 ```
 
-We can now assemble the JSON metadata:
+我们现在可以组装JSON元数据：
 ```solidity
 function render(RenderParams memory params) {
     string memory image = ...SVG rendering...
@@ -296,8 +308,7 @@ function render(RenderParams memory params) {
     );
 ```
 
-And, finally, we can return the result:
-
+最后，我们可以返回结果：
 ```solidity
 return
     string.concat(
@@ -306,9 +317,9 @@ return
     );
 ```
 
-### Filling the Gap in `tokenURI`
+### 填补`tokenURI`中的空白
 
-Now we're ready to return to the `tokenURI` function in the NFT manager contract and add the actual rendering:
+现在我们准备回到NFT管理器合约中的`tokenURI`函数，并添加实际的渲染：
 
 ```solidity
 function tokenURI(uint256 tokenId)
@@ -335,17 +346,17 @@ function tokenURI(uint256 tokenId)
 }
 ```
 
-# Gas Costs
+# Gas成本
 
-With all its benefits, storing data on-chain has a huge disadvantage: contract deployments become very expensive. When deploying a contract, you pay for the size of the contract, and all the strings and templates increase gas spending significantly. This gets even worse the more advanced your SVGs are: the more there are shapes, CSS styles, animations, etc. the more expensive it gets.
+尽管链上存储数据有诸多优点，但它也有一个巨大的缺点：合约部署变得非常昂贵。在部署合约时，你需要为合约的大小付费，而所有的字符串和模板都会显著增加gas消耗。这种情况在SVG越复杂时会变得更糟：形状、CSS样式、动画等越多，成本就越高。
 
-Keep in mind that the NFT renderer we implemented above is not gas optimized: you can see the repetitive `rect` and `text` tag strings that can be extracted into internal functions. I sacrificed gas efficiency for the readability of the contract.  In real NFT projects that store all data on-chain, code readability is usually very poor due to heavy gas cost optimizations.
+请记住，我们上面实现的NFT渲染器并未进行gas优化：你可以看到重复的`rect`和`text`标签字符串，这些可以被提取到内部函数中。我为了合约的可读性牺牲了gas效率。在实际的链上存储所有数据的NFT项目中，由于大量的gas成本优化，代码可读性通常非常差。
 
-# Testing
+# 测试
 
-The last thing I wanted to focus on here is how we can test the NFT images. It's very important to keep all changes in NFT images tracked to ensure no change breaks rendering. For this, we need a way to test the output of `tokenURI` and its different variations (we can even pre-render the whole collection and have tests to ensure no image gets broken during development).
+我最后想要关注的是如何测试NFT图像。跟踪NFT图像的所有变化非常重要，以确保没有任何变化会破坏渲染。为此，我们需要一种方法来测试`tokenURI`的输出及其不同变体（我们甚至可以预先渲染整个集合，并进行测试以确保在开发过程中没有图像被破坏）。
 
-To test the output of `tokenURI`, I added this custom assertion:
+为了测试`tokenURI`的输出，我添加了这个自定义断言：
 
 ```solidity
 assertTokenURI(
@@ -355,8 +366,7 @@ assertTokenURI(
 );
 ```
 
-The first argument is the actual output and the second argument is the name of the file that stores the expected one. The assertion loads the content of the file and compares it with the actual one:
-
+第一个参数是实际输出，第二个参数是存储预期输出的文件名。这个断言加载文件的内容并将其与实际输出进行比较：
 ```solidity
 function assertTokenURI(
     string memory actual,
@@ -371,13 +381,14 @@ function assertTokenURI(
 }
 ```
 
-We can do this in Solidity thanks to the `vm.readFile()` cheat code provided by the `forge-std` library, which is a helper library that comes with Forge. Not only this is simple and convenient, but this is also secure: we can configure filesystem permissions to allow only permitted file operations. Specifically, to make the above test work, we need to add this
-`fs_permissions` rule to `foundry.toml`:
+得益于`forge-std`库提供的`vm.readFile()`作弊码，我们可以在Solidity中实现这一点。`forge-std`是Forge附带的一个辅助库。这不仅简单方便，而且还很安全：我们可以配置文件系统权限，只允许执行被许可的文件操作。具体来说，要使上述测试正常工作，我们需要在`foundry.toml`中添加这个`fs_permissions`规则：
+
 ```toml
 fs_permissions = [{access='read',path='.'}]
 ```
 
-And this is how you can read the SVG from a `tokenURI` fixture:
+以下是如何从`tokenURI`固定数据中读取SVG：
+
 ```shell
 $ cat test/fixtures/tokenuri0 \
     | awk -F ',' '{print $2}' \
@@ -387,5 +398,4 @@ $ cat test/fixtures/tokenuri0 \
     | base64 -d - > nft.svg \
     && open nft.svg
 ```
-
-> Ensure you have [jq tool](https://stedolan.github.io/jq/) installed.
+> 请确保你已安装[jq工具](https://stedolan.github.io/jq/)。

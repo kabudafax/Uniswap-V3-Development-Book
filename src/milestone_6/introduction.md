@@ -1,23 +1,23 @@
-# NFT Positions
+# NFT 头寸
 
-This is the cherry on the cake of this book. In this milestone, we're going to learn how Uniswap contracts can be extended and integrated into third-party protocols. This possibility is a direct consequence of having core contracts with only crucial functions, which allows for integration into other contracts without the need to add new features to core contracts.
+这是本书的点睛之笔。在这个里程碑中，我们将学习如何扩展 Uniswap 合约并将其集成到第三方协议中。这种可能性是核心合约只包含关键功能的直接结果，这允许将其集成到其他合约中，而无需向核心合约添加新功能。
 
-A bonus feature of Uniswap V3 was the ability to turn liquidity positions into NFT tokens. Here's an example of one such token:
+Uniswap V3 的一个额外特性是将流动性头寸转换为 NFT 代币的能力。以下是这种代币的一个例子：
 
 <p align="center">
-<img src="images/nft_example.png" alt="Uniswap V3 NFT example"/>
+<img src="images/nft_example.png" alt="Uniswap V3 NFT 示例"/>
 </p>
 
-It shows token symbols, pool fees, position ID, lower and upper ticks, token addresses, and the segment of the curve where the position is provided.
+它显示了代币符号、池手续费、头寸 ID、下限和上限刻度、代币地址，以及提供头寸的曲线段。
 
-> You can see all Uniswap V3 NFT positions in [this OpenSea collection](https://opensea.io/collection/uniswap-v3-positions).
+> 你可以在[这个 OpenSea 集合](https://opensea.io/collection/uniswap-v3-positions)中查看所有 Uniswap V3 NFT 头寸。
 
-In this milestone, we're going to add NFT tokenization of liquidity positions!
+在这个里程碑中，我们将添加流动性头寸的 NFT 代币化功能！
 
-Let's go!
+让我们开始吧！
 
-> You'll find the complete code of this chapter in [this Github branch](https://github.com/Jeiwan/uniswapv3-code/tree/milestone_6).
+> 你可以在[这个 Github 分支](https://github.com/Jeiwan/uniswapv3-code/tree/milestone_6)中找到本章的完整代码。
 >
-> This milestone introduces a lot of code changes in existing contracts. [Here you can see all changes since the last milestone](https://github.com/Jeiwan/uniswapv3-code/compare/milestone_5...milestone_6)
+> 这个里程碑对现有合约引入了许多代码更改。[在这里你可以看到自上一个里程碑以来的所有变更](https://github.com/Jeiwan/uniswapv3-code/compare/milestone_5...milestone_6)
 
-> If you have any questions feel free to ask them in [the GitHub Discussion of this milestone](https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-6-nft-positions)!
+> 如果你有任何问题，欢迎在[本里程碑的 GitHub 讨论区](https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-6-nft-positions)中提出！

@@ -1,24 +1,29 @@
-# NFT ManagerContract
+# NFT 管理合约
 
-We're not going to add NFT-related functionality to the pool contract–we need a separate contract that will merge NFTs and liquidity positions. Recall that, while working on our implementation, we built the `UniswapV3Manager` contract to facilitate interaction with pool contracts (to make some calculations simpler and to enable multi-pool swaps). This contract was a good demonstration of how core Uniswap contracts can be extended. And we're going to push this idea a little bit further.
+我们不会在池合约中添加 NFT 相关功能——我们需要一个单独的合约来合并 NFT 和流动性头寸。回想一下，在我们实现的过程中，我们构建了 `UniswapV3Manager` 合约以便于与池合约交互（使一些计算更简单，并启用多池交换）。这个合约很好地展示了如何扩展核心 Uniswap 合约。我们将进一步推进这个想法。
 
-We'll need a manager contract that will implement the ERC721 standard and will manage liquidity positions. The contract will have the standard NFT functionality (minting, burning, transferring, balances and ownership tracking, etc.) and will allow to provide and remove liquidity to pools. The contract will need to be the actual owner of liquidity in pools because we don't want to let users add liquidity without minting a token and removing the entire liquidity without burning one. We want every liquidity position to be linked to an NFT token, and we want them to be synchronized.
+我们需要一个管理合约，它将实现 ERC721 标准并管理流动性头寸。该合约将具有标准的 NFT 功能（铸造、销毁、转移、余额和所有权跟踪等），并允许向池提供和移除流动性。合约需要成为池中流动性的实际所有者，因为我们不希望用户在不铸造代币的情况下添加流动性，也不希望在不销毁代币的情况下移除全部流动性。我们希望每个流动性头寸都与一个 NFT 代币相关联，并且我们希望它们保持同步。
 
-Let's see what functions we'll have in the new contract:
-1. since it'll be an NFT contract, it'll have all the ERC721 functions, including `tokenURI`, which returns the URI of the image of an NFT token;
-1. `mint` and `burn` to mint and burn liquidity and NFT tokens at the same time;
-1. `addLiquidity` and `removeLiquidity` to add and remove liquidity in existing positions;
-1. `collect`, to collect tokens after removing liquidity.
+让我们看看新合约中将会有哪些函数：
 
-Alright, let's get to code.
+1. 由于它将是一个 NFT 合约，它将包含所有 ERC721 函数，包括 `tokenURI`，该函数返回 NFT 代币图像的 URI；
 
-## The Minimal Contract
+2. `mint` 和 `burn` 用于同时铸造和销毁流动性和 NFT 代币；
 
-Since we don't want to implement the ERC721 standard from scratch, we're going to use a library. We already have [Solmate](https://github.com/transmissions11/solmate) in the dependencies, so we're going to use [its ERC721 implementation](https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol).
+3. `addLiquidity` 和 `removeLiquidity` 用于在现有头寸中添加和移除流动性；
 
-> Using [the ERC721 implementation from OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts/tree/master/contracts/token/ERC721) is also an option, but I prefer the gas-optimized contracts from Solmate.
+4. `collect`，用于在移除流动性后收集代币。
 
-This will be the bare minimum of the NFT manager contract:
+好的，让我们开始编码。
+
+## 最小合约
+
+由于我们不想从头实现 ERC721 标准，我们将使用一个库。我们的依赖项中已经有 [Solmate](https://github.com/transmissions11/solmate)，所以我们将使用[它的 ERC721 实现](https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol)。
+
+> 使用 [OpenZeppelin 的 ERC721 实现](https://github.com/OpenZeppelin/openzeppelin-contracts/tree/master/contracts/token/ERC721) 也是一个选择，但我更喜欢 Solmate 的气体优化合约。
+
+这将是 NFT 管理合约的最基本实现：
+
 
 ```solidity
 contract UniswapV3NFTManager is ERC721 {
@@ -40,14 +45,13 @@ contract UniswapV3NFTManager is ERC721 {
     }
 }
 ```
+`tokenURI` 将返回一个空字符串，直到我们实现元数据和 SVG 渲染器。我们添加了这个存根，以便在我们处理合约其余部分时 Solidity 编译器不会失败（Solmate ERC721 合约中的 `tokenURI` 函数是虚拟的，所以我们必须实现它）。
 
-`tokenURI` will return an empty string until we implement a metadata and SVG renderer. We've added the stub so that the Solidity compiler doesn't fail while we're working on the rest of the contract (the `tokenURI` function in the Solmate ERC721 contract is virtual, so we must implement it).
+## 铸造
 
-## Minting
+如我们之前讨论的，铸造将涉及两个操作：向池中添加流动性和铸造 NFT。
 
-Minting, as we discussed earlier, will involve two operations: adding liquidity to a pool and minting an NFT.
-
-To keep the links between pool liquidity positions and NFTs, we'll need a mapping and a structure:
+为了保持池流动性头寸和 NFT 之间的链接，我们需要一个映射和一个结构：
 
 ```solidity
 struct TokenPosition {
@@ -58,14 +62,17 @@ struct TokenPosition {
 mapping(uint256 => TokenPosition) public positions;
 ```
 
-To find a position we need:
-1. a pool address;
-1. an owner address;
-1. the boundaries of a position (lower and upper ticks).
+要找到一个头寸，我们需要：
 
-Since the NFT manager contract will be the owner of all positions created via it, we don't need to store the position's owner address and we can only store the rest data. The keys in the `positions` mapping are token IDs; the mapping links NFT IDs to the position data that is required to find a liquidity position.
+1. 池地址；
 
-Let's implement minting:
+2. 所有者地址；
+
+3. 头寸的边界（下限和上限刻度）。
+
+由于 NFT 管理合约将成为通过它创建的所有头寸的所有者，我们不需要存储头寸的所有者地址，我们只需存储其余数据。`positions` 映射中的键是代币 ID；该映射将 NFT ID 链接到查找流动性头寸所需的头寸数据。
+
+让我们来实现铸造：
 
 ```solidity
 struct MintParams {
@@ -86,9 +93,10 @@ function mint(MintParams calldata params) public returns (uint256 tokenId) {
 }
 ```
 
-The minting parameters are identical to those of `UniswapV3Manager`, with the addition of `recipient`, which will allow minting NFT to another address.
+铸造参数与 `UniswapV3Manager` 的参数相同，但增加了 `recipient`，这将允许为另一个地址铸造 NFT。
 
-In the `mint` function, we first add liquidity to a pool:
+在 `mint` 函数中，我们首先向池中添加流动性：
+
 
 ```solidity
 IUniswapV3Pool pool = getPool(params.tokenA, params.tokenB, params.fee);
@@ -106,19 +114,18 @@ IUniswapV3Pool pool = getPool(params.tokenA, params.tokenB, params.fee);
 );
 ```
 
-`_addLiquidity` is identical to the body of the `mint` function in the `UniswapV3Manager` contract: it converts ticks to $\sqrt(P)$, computes liquidity amount, and calls `pool.mint()`.
+`_addLiquidity` 与 `UniswapV3Manager` 合约中 `mint` 函数的主体内容相同：它将刻度转换为 $\sqrt(P)$，计算流动性数量，并调用 `pool.mint()`。
 
-Next, we mint an NFT:
+接下来，我们铸造一个 NFT：
 
 ```solidity
 tokenId = nextTokenId++;
 _mint(params.recipient, tokenId);
 totalSupply++;
 ```
+`tokenId` 被设置为当前的 `nextTokenId`，然后后者递增。`_mint` 函数由 Solmate 的 ERC721 合约提供。在铸造新代币后，我们更新 `totalSupply`。
 
-`tokenId` is set to the current `nextTokenId` and the latter is then incremented. The `_mint` function is provided by the ERC721 contract from Solmate. After minting a new token, we update `totalSupply`.
-
-Finally, we need to store the information about the new token and the new position:
+最后，我们需要存储有关新代币和新头寸的信息：
 
 ```solidity
 TokenPosition memory tokenPosition = TokenPosition({
@@ -130,11 +137,12 @@ TokenPosition memory tokenPosition = TokenPosition({
 positions[tokenId] = tokenPosition;
 ```
 
-This will later help us find liquidity position by token ID.
+这将在后续帮助我们通过代币 ID 找到流动性头寸。
 
-## Adding Liquidity
+## 添加流动性
 
-Next, we'll implement a function to add liquidity to an existing position, in the case when we want to add more liquidity in a position that already has some. In such cases, we don't want to mint an NFT, but only to increase the amount of liquidity in an existing position. For that, we'll only need to provide a token ID and token amounts:
+接下来，我们将实现一个函数，用于向现有头寸添加流动性，适用于我们想要在已有一些流动性的头寸中增加更多流动性的情况。在这种情况下，我们不想铸造 NFT，而只是增加现有头寸中的流动性数量。为此，我们只需要提供代币 ID 和代币数量：
+
 
 ```solidity
 function addLiquidity(AddLiquidityParams calldata params)
@@ -162,11 +170,11 @@ function addLiquidity(AddLiquidityParams calldata params)
 }
 ```
 
-This function ensures there's an existing token and calls `pool.mint()` with parameters of an existing position.
+这个函数确保存在一个已有的token，并使用现有position的参数调用`pool.mint()`。
 
-## Remove Liquidity
+## 移除流动性
 
-Recall that in the `UniswapV3Manager` contract we didn't implement a `burn` function because we wanted users to be owners of liquidity positions. Now, we want the NFT manager to be the owner. And we can have liquidity burning implemented in it:
+回想一下，在`UniswapV3Manager`合约中，我们没有实现`burn`函数，因为我们希望用户成为流动性position的所有者。现在，我们希望NFT管理器成为所有者。我们可以在其中实现流动性销毁：
 
 ```solidity
 struct RemoveLiquidityParams {
@@ -197,11 +205,12 @@ function removeLiquidity(RemoveLiquidityParams memory params)
 }
 ```
 
-We're again checking that the provided token ID is valid. And we also need to ensure that a position has enough liquidity to burn.
+我们再次检查提供的token ID是否有效。我们还需要确保position有足够的流动性可以销毁。
 
-## Collecting Tokens
+## 收集代币
 
-The NFT manager contract can also collect tokens after burning liquidity. Notice that collected tokens are sent to `msg.sender` since the contract manages liquidity on behalf of the caller:
+NFT管理器合约也可以在销毁流动性后收集代币。注意，收集的代币会被发送给`msg.sender`，因为合约是代表调用者管理流动性的：
+
 
 ```solidity
 struct CollectParams {
@@ -230,12 +239,16 @@ function collect(CollectParams memory params)
 }
 ```
 
-## Burning
+## 销毁
 
-Finally, burning. Unlike the other functions of the contract, this function doesn't do anything with a pool: it only burns an NFT. To burn an NFT, the underlying position must be empty and tokens must be collected. So, if we want to burn an NFT, we need to:
-1. call `removeLiquidity` and remove the entire position liquidity;
-1. call `collect` to collect the tokens after burning the position;
-1. call `burn` to burn the token.
+最后是销毁。与合约的其他函数不同，这个函数不会对池子做任何操作：它只是销毁一个NFT。要销毁NFT，底层position必须为空，并且代币必须已被收集。因此，如果我们想要销毁NFT，我们需要：
+
+1. 调用`removeLiquidity`并移除整个position的流动性；
+
+2. 调用`collect`来收集销毁position后的代币；
+
+3. 调用`burn`来销毁token。
+
 
 ```solidity
 function burn(uint256 tokenId) public isApprovedOrOwner(tokenId) {
@@ -255,4 +268,4 @@ function burn(uint256 tokenId) public isApprovedOrOwner(tokenId) {
 }
 ```
 
-That's it!
+就是这样！

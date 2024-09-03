@@ -1,21 +1,27 @@
-# Cross-Tick Swaps
+# 跨价格区间交换
 
-We have made great progress so far and our Uniswap V3 implementation is quite close to the original one! However, our implementation only supports swaps within a price range–and this is what we're going to improve in this milestone.
+到目前为止,我们已经取得了巨大的进展,我们的Uniswap V3实现已经非常接近原始版本了！然而,我们的实现仅支持在一个价格区间内进行交换——这正是我们将在这个里程碑中改进的地方。
 
-In this milestone, we'll:
-1. update the `mint` function to provide liquidity in different price ranges;
-1. update the `swap` function to cross price ranges when there's not enough liquidity in the current price range;
-1. learn how to calculate liquidity in smart contracts;
-1. implement slippage protection in the `mint` and `swap` functions;
-1. update the UI application to allow to add liquidity at different price ranges;
-1. learn a little bit more about fixed-point numbers.
+在这个里程碑中,我们将:
 
-In this milestone, we'll complete swapping, the core functionality of Uniswap!
+1. 更新`mint`函数,以便在不同的价格区间提供流动性；
 
-Let's begin!
+2. 更新`swap`函数,当当前价格区间的流动性不足时,可以跨越价格区间；
 
-> You'll find the complete code of this chapter in [this Github branch](https://github.com/Jeiwan/uniswapv3-code/tree/milestone_3).
+3. 学习如何在智能合约中计算流动性；
+
+4. 在`mint`和`swap`函数中实现滑点保护；
+
+5. 更新UI应用程序,允许在不同的价格区间添加流动性；
+
+6. 进一步了解定点数。
+
+在这个里程碑中,我们将完成交换功能,这是Uniswap的核心功能！
+
+让我们开始吧！
+
+> 你可以在[这个Github分支](https://github.com/Jeiwan/uniswapv3-code/tree/milestone_3)中找到本章的完整代码。
 >
-> This milestone introduces a lot of code changes in existing contracts. [Here you can see all changes since the last milestone](https://github.com/Jeiwan/uniswapv3-code/compare/milestone_2...milestone_3)
+> 这个里程碑在现有合约中引入了很多代码变更。[在这里你可以看到自上一个里程碑以来的所有变更](https://github.com/Jeiwan/uniswapv3-code/compare/milestone_2...milestone_3)
 
-> If you have any questions feel free to ask them in [the GitHub Discussion of this milestone](https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-3-cross-tick-swaps)!
+> 如果你有任何问题,欢迎在[这个里程碑的GitHub讨论区](https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-3-cross-tick-swaps)中提出！
