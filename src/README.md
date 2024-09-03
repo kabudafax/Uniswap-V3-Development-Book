@@ -5,7 +5,7 @@
 *由于本人水平有限，翻译校对难免有错误，欢迎大家指正。*
 
 <p align="center">
-<img src="/images/book.jpg" alt="Uniswap V3 开发手册封面" width="480"/>
+<img src="images/book.jpg" alt="Uniswap V3 开发手册封面" width="480"/>
 </p>
 
 
@@ -59,7 +59,7 @@
 ## Uniswap资助计划
 
 <p align="center">
-<img src="/images/uf_logo.png" alt="Uniswap Foundation标志"/>
+<img src="images/uf_logo.png" alt="Uniswap Foundation标志"/>
 </p>
 
 为了写这本书，作者获得了[Uniswap Foundation](https://uniswapfoundation.mirror.xyz/)的资助。没有这笔资助,作者可能就没有足够的动力和耐心深入研究Uniswap的最深层次并完成这本书。这笔资助也是本书开源和对任何人免费的主要原因。您可以[了解更多关于Uniswap资助计划的信息](https://www.unigrants.org/)(也许可以申请！)。
