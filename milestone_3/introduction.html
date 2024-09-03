@@ -180,25 +180,37 @@
                 <div id="content" class="content">
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
-<h1 id="cross-tick-swaps"><a class="header" href="#cross-tick-swaps">Cross-Tick Swaps</a></h1>
-<p>We have made great progress so far and our Uniswap V3 implementation is quite close to the original one! However, our implementation only supports swaps within a price range–and this is what we're going to improve in this milestone.</p>
-<p>In this milestone, we'll:</p>
+<h1 id="跨价格区间交换"><a class="header" href="#跨价格区间交换">跨价格区间交换</a></h1>
+<p>到目前为止,我们已经取得了巨大的进展,我们的Uniswap V3实现已经非常接近原始版本了！然而,我们的实现仅支持在一个价格区间内进行交换——这正是我们将在这个里程碑中改进的地方。</p>
+<p>在这个里程碑中,我们将:</p>
 <ol>
-<li>update the <code>mint</code> function to provide liquidity in different price ranges;</li>
-<li>update the <code>swap</code> function to cross price ranges when there's not enough liquidity in the current price range;</li>
-<li>learn how to calculate liquidity in smart contracts;</li>
-<li>implement slippage protection in the <code>mint</code> and <code>swap</code> functions;</li>
-<li>update the UI application to allow to add liquidity at different price ranges;</li>
-<li>learn a little bit more about fixed-point numbers.</li>
+<li>
+<p>更新<code>mint</code>函数,以便在不同的价格区间提供流动性；</p>
+</li>
+<li>
+<p>更新<code>swap</code>函数,当当前价格区间的流动性不足时,可以跨越价格区间；</p>
+</li>
+<li>
+<p>学习如何在智能合约中计算流动性；</p>
+</li>
+<li>
+<p>在<code>mint</code>和<code>swap</code>函数中实现滑点保护；</p>
+</li>
+<li>
+<p>更新UI应用程序,允许在不同的价格区间添加流动性；</p>
+</li>
+<li>
+<p>进一步了解定点数。</p>
+</li>
 </ol>
-<p>In this milestone, we'll complete swapping, the core functionality of Uniswap!</p>
-<p>Let's begin!</p>
+<p>在这个里程碑中,我们将完成交换功能,这是Uniswap的核心功能！</p>
+<p>让我们开始吧！</p>
 <blockquote>
-<p>You'll find the complete code of this chapter in <a href="https://github.com/Jeiwan/uniswapv3-code/tree/milestone_3">this Github branch</a>.</p>
-<p>This milestone introduces a lot of code changes in existing contracts. <a href="https://github.com/Jeiwan/uniswapv3-code/compare/milestone_2...milestone_3">Here you can see all changes since the last milestone</a></p>
+<p>你可以在<a href="https://github.com/Jeiwan/uniswapv3-code/tree/milestone_3">这个Github分支</a>中找到本章的完整代码。</p>
+<p>这个里程碑在现有合约中引入了很多代码变更。<a href="https://github.com/Jeiwan/uniswapv3-code/compare/milestone_2...milestone_3">在这里你可以看到自上一个里程碑以来的所有变更</a></p>
 </blockquote>
 <blockquote>
-<p>If you have any questions feel free to ask them in <a href="https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-3-cross-tick-swaps">the GitHub Discussion of this milestone</a>!</p>
+<p>如果你有任何问题,欢迎在<a href="https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-3-cross-tick-swaps">这个里程碑的GitHub讨论区</a>中提出！</p>
 </blockquote>
 
                     </main>

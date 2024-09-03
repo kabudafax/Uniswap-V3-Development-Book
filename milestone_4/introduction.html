@@ -180,24 +180,34 @@
                 <div id="content" class="content">
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
-<h1 id="multi-pool-swaps"><a class="header" href="#multi-pool-swaps">Multi-Pool Swaps</a></h1>
-<p>After implementing cross-tick swaps, we've got close to real Uniswap V3 swaps. One significant limitation of our implementation is that it allows only swaps within a pool–if there's no pool for a pair of tokens, then swapping between these tokens is not possible. This is not so in Uniswap since it allows multi-pool swaps. In this chapter, we're going to add multi-pool swaps to our implementation.</p>
-<p>Here's the plan:</p>
+<h1 id="多池交换"><a class="header" href="#多池交换">多池交换</a></h1>
+<p>在实现跨刻度交换后，我们已经接近了真实的 Uniswap V3 交换。我们实现的一个重要限制是它只允许在单个池内进行交换——如果一对代币没有对应的池，那么这两个代币之间就无法进行交换。但在 Uniswap 中并非如此，因为它允许多池交换。在本章中，我们将为我们的实现添加多池交换功能。</p>
+<p>以下是我们的计划：</p>
 <ol>
-<li>first, we'll learn about and implement the Factory contract;</li>
-<li>then, we'll see how chained or multi-pool swaps work and implement the Path library;</li>
-<li>then, we'll update the front-end app to support multi-pool swaps;</li>
-<li>we'll implement a basic router that finds a path between two tokens;</li>
-<li>along the way, we'll also learn about tick spacing which is a way of optimizing swaps.</li>
+<li>
+<p>首先，我们将学习并实现 Factory 合约；</p>
+</li>
+<li>
+<p>然后，我们将了解链式或多池交换的工作原理，并实现 Path 库；</p>
+</li>
+<li>
+<p>接着，我们将更新前端应用以支持多池交换；</p>
+</li>
+<li>
+<p>我们将实现一个基本的路由器，用于在两个代币之间找到路径；</p>
+</li>
+<li>
+<p>在此过程中，我们还将学习刻度间距（tick spacing），这是一种优化交换的方法。</p>
+</li>
 </ol>
-<p>After finishing this chapter, our implementation will be able to handle multi-pool swaps, for example, swapping WBTC for WETH via different stablecoins: WETH → USDC → USDT → WBTC.</p>
-<p>Let's begin!</p>
+<p>完成本章后，我们的实现将能够处理多池交换，例如，通过不同的稳定币将 WBTC 换成 WETH：WETH → USDC → USDT → WBTC。</p>
+<p>让我们开始吧！</p>
 <blockquote>
-<p>You'll find the complete code of this chapter in <a href="https://github.com/Jeiwan/uniswapv3-code/tree/milestone_4">this Github branch</a>.</p>
-<p>This milestone introduces a lot of code changes in existing contracts. <a href="https://github.com/Jeiwan/uniswapv3-code/compare/milestone_3...milestone_4">Here you can see all changes since the last milestone</a></p>
+<p>你可以在<a href="https://github.com/Jeiwan/uniswapv3-code/tree/milestone_4">这个 Github 分支</a>中找到本章的完整代码。</p>
+<p>这个里程碑对现有合约引入了许多代码更改。<a href="https://github.com/Jeiwan/uniswapv3-code/compare/milestone_3...milestone_4">在这里你可以看到自上一个里程碑以来的所有变更</a></p>
 </blockquote>
 <blockquote>
-<p>If you have any questions feel free to ask them in <a href="https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-4-multi-pool-swaps">the GitHub Discussion of this milestone</a>!</p>
+<p>如果你有任何问题，欢迎在<a href="https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-4-multi-pool-swaps">本里程碑的 GitHub 讨论区</a>中提出！</p>
 </blockquote>
 
                     </main>
