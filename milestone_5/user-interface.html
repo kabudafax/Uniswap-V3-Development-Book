@@ -181,9 +181,9 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="user-interface"><a class="header" href="#user-interface">User Interface</a></h1>
-<p>In this milestone, we’ve added the ability to remove liquidity from a pool and collect accumulated fees. Thus, we need to reflect these changes in the user interface to allow users to remove liquidity.</p>
+<p>In this milestone, we've added the ability to remove liquidity from a pool and collect accumulated fees. Thus, we need to reflect these changes in the user interface to allow users to remove liquidity.</p>
 <h2 id="fetching-positions"><a class="header" href="#fetching-positions">Fetching Positions</a></h2>
-<p>To let the user choose how much liquidity to remove, we first need to fetch the user’s positions from a pool. To make this easier, we can add a helper function to the Manager contract, which will return the user position in a specific pool:</p>
+<p>To let the user choose how much liquidity to remove, we first need to fetch the user's positions from a pool. To make this easier, we can add a helper function to the Manager contract, which will return the user position in a specific pool:</p>
 <pre><code class="language-solidity">function getPosition(GetPositionParams calldata params)
     public
     view
@@ -235,7 +235,7 @@
 }, 500);
 </code></pre>
 <h2 id="getting-pool-address"><a class="header" href="#getting-pool-address">Getting Pool Address</a></h2>
-<p>Since we need to call <code>burn</code> and <code>collect</code> on a pool, we still need to compute the pool’s address on the front end. Recall that pool addresses are computed using the <code>CREATE2</code> opcode, which requires a salt and the hash of the contract’s code. Luckily, Ether.js has the <code>getCreate2Address</code> function that allows to compute <code>CREATE2</code> in JavaScript:</p>
+<p>Since we need to call <code>burn</code> and <code>collect</code> on a pool, we still need to compute the pool's address on the front end. Recall that pool addresses are computed using the <code>CREATE2</code> opcode, which requires a salt and the hash of the contract's code. Luckily, Ether.js has the <code>getCreate2Address</code> function that allows to compute <code>CREATE2</code> in JavaScript:</p>
 <pre><code class="language-js">const sortTokens = (tokenA, tokenB) =&gt; {
   return tokenA.toLowerCase() &lt; tokenB.toLowerCase ? [tokenA, tokenB] : [tokenB, tokenA];
 }
@@ -254,7 +254,7 @@ const computePoolAddress = (factory, tokenA, tokenB, fee) =&gt; {
   );
 }
 </code></pre>
-<p>However, the pool’s codehash has to be hard coded because we don’t want to store its code on the front end to calculate the hash. So, we’ll use Forge to get the hash:</p>
+<p>However, the pool's codehash has to be hard coded because we don't want to store its code on the front end to calculate the hash. So, we'll use Forge to get the hash:</p>
 <pre><code class="language-shell">$ forge inspect UniswapV3Pool bytecode| xargs cast keccak 
 0x...
 </code></pre>
@@ -262,7 +262,7 @@ const computePoolAddress = (factory, tokenA, tokenB, fee) =&gt; {
 <pre><code class="language-js">const poolCodeHash = &quot;0x9dc805423bd1664a6a73b31955de538c338bac1f5c61beb8f4635be5032076a2&quot;;
 </code></pre>
 <h2 id="removing-liquidity"><a class="header" href="#removing-liquidity">Removing Liquidity</a></h2>
-<p>After obtaining the liquidity amount and the pool address, we’re ready to call <code>burn</code>:</p>
+<p>After obtaining the liquidity amount and the pool address, we're ready to call <code>burn</code>:</p>
 <pre><code class="language-js">const removeLiquidity = (e) =&gt; {
   e.preventDefault();
 

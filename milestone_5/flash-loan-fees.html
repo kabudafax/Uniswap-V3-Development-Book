@@ -181,8 +181,8 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="flash-loan-fees"><a class="header" href="#flash-loan-fees">Flash Loan Fees</a></h1>
-<p>In a previous chapter, we implemented flash loans and made them free. However, Uniswap collects swap fees on flash loans, and we’re going to add this to our implementation: the amounts repaid by flash loan borrowers must include a fee.</p>
-<p>Here’s what the updated <code>flash</code> function looks like:</p>
+<p>In a previous chapter, we implemented flash loans and made them free. However, Uniswap collects swap fees on flash loans, and we're going to add this to our implementation: the amounts repaid by flash loan borrowers must include a fee.</p>
+<p>Here's what the updated <code>flash</code> function looks like:</p>
 <pre><code class="language-solidity">function flash(
     uint256 amount0,
     uint256 amount1,
@@ -211,7 +211,7 @@
     emit Flash(msg.sender, amount0, amount1);
 }
 </code></pre>
-<p>What’s changed is that we’re now calculating fees on the amounts requested by the caller and then expect pool balances to have grown by the fee amounts.</p>
+<p>What's changed is that we're now calculating fees on the amounts requested by the caller and then expect pool balances to have grown by the fee amounts.</p>
 
                     </main>
 

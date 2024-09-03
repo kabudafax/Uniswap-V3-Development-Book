@@ -181,20 +181,20 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="cross-tick-swaps"><a class="header" href="#cross-tick-swaps">Cross-Tick Swaps</a></h1>
-<p>Cross-tick swaps are probably the most advanced feature of Uniswap V3. Luckily, we have already implemented almost everything we need to make cross-tick swaps. Let’s see how cross-tick swaps work before implementing them.</p>
+<p>Cross-tick swaps are probably the most advanced feature of Uniswap V3. Luckily, we have already implemented almost everything we need to make cross-tick swaps. Let's see how cross-tick swaps work before implementing them.</p>
 <h2 id="how-cross-tick-swaps-work"><a class="header" href="#how-cross-tick-swaps-work">How Cross-Tick Swaps Work</a></h2>
 <p>A common Uniswap V3 pool is a pool with many overlapping (and outstanding) price ranges. Each pool tracks current <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1133em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='1.08em' viewBox='0 0 400000 1080' preserveAspectRatio='xMinYMin slice'><path d='M95,702 c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14 c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54 c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10 s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429 c69,-144,104.5,-217.7,106.5,-221 l0 -0 c5.3,-9.3,12,-14,20,-14 H400000v40H845.2724 s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7 c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span> and tick. When users swap tokens they move the current price and tick to the left or the right, depending on the swap direction. These movements are caused by tokens being added and removed from pools during swaps.</p>
-<p>Pools also track <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span> (<code>liquidity</code> variable in our code), which is <strong>the total liquidity provided by all price ranges that include the current price</strong>. It’s expected that, during big price moves, the current price moves outside of price ranges. When this happens, such price ranges become inactive and their liquidity gets subtracted from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span>. On the other hand, when the current price enters a price range, <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span> is increased and the price range gets activated.</p>
-<p>Let’s analyze this illustration:</p>
+<p>Pools also track <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span> (<code>liquidity</code> variable in our code), which is <strong>the total liquidity provided by all price ranges that include the current price</strong>. It's expected that, during big price moves, the current price moves outside of price ranges. When this happens, such price ranges become inactive and their liquidity gets subtracted from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span>. On the other hand, when the current price enters a price range, <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span> is increased and the price range gets activated.</p>
+<p>Let's analyze this illustration:</p>
 <p><img src="images/price_range_dynamics.png" alt="The dynamic of price ranges" /></p>
 <p>There are three price ranges on this image. The top one is the one currently engaged, it includes the current price. The liquidity of this price range is set to the <code>liquidity</code> state variable of the Pool contract.</p>
-<p>If we buy all the ETH from the top price range, the price will increase and we’ll move to the right price range, which at this moment contains only ETH, not USDC. We might stop in this price range if there’s enough liquidity to satisfy our demand.  In this case, the <code>liquidity</code> variable will contain only the liquidity provided by this price range. If we continue buying ETH and deplete the right price range, we’ll need another price range that’s to the right of this price range. If there are no more price ranges, we’ll have to stop, and our swap will be satisfied only partially.</p>
-<p>If we buy all the USDC from the top price range (and sell ETH), the price will decrease and we’ll move to the left price range–at this moment it contains only USDC. If we deplete it, we’ll need another price range to the left of it.</p>
+<p>If we buy all the ETH from the top price range, the price will increase and we'll move to the right price range, which at this moment contains only ETH, not USDC. We might stop in this price range if there's enough liquidity to satisfy our demand.  In this case, the <code>liquidity</code> variable will contain only the liquidity provided by this price range. If we continue buying ETH and deplete the right price range, we'll need another price range that's to the right of this price range. If there are no more price ranges, we'll have to stop, and our swap will be satisfied only partially.</p>
+<p>If we buy all the USDC from the top price range (and sell ETH), the price will decrease and we'll move to the left price range–at this moment it contains only USDC. If we deplete it, we'll need another price range to the left of it.</p>
 <p>The current price moves during swapping. It moves from one price range to another, but it must always stay within a price range–otherwise, trading is not possible.</p>
-<p>Of course, price ranges can overlap, so, in practice, the transition between price ranges is seamless. And it’s not possible to hop over a gap–a swap would be completed partially. It’s also worth noting that, in the areas where price ranges overlap, price moves slower. This is because supply is higher in such areas and the effect of demand is lower (recall from the introduction that high demand with low supply increases the price).</p>
-<p>Our current implementation doesn’t support such fluidity: we only allow swaps within one active price range. This is what we’re going to improve now.</p>
+<p>Of course, price ranges can overlap, so, in practice, the transition between price ranges is seamless. And it's not possible to hop over a gap–a swap would be completed partially. It's also worth noting that, in the areas where price ranges overlap, price moves slower. This is because supply is higher in such areas and the effect of demand is lower (recall from the introduction that high demand with low supply increases the price).</p>
+<p>Our current implementation doesn't support such fluidity: we only allow swaps within one active price range. This is what we're going to improve now.</p>
 <h2 id="updating-the-computeswapstep-function"><a class="header" href="#updating-the-computeswapstep-function">Updating the <code>computeSwapStep</code> Function</a></h2>
-<p>In the <code>swap</code> function, we’re iterating over initialized ticks (that is, ticks with liquidity) to fill the amount the user has requested. In each iteration, we:</p>
+<p>In the <code>swap</code> function, we're iterating over initialized ticks (that is, ticks with liquidity) to fill the amount the user has requested. In each iteration, we:</p>
 <ol>
 <li>find the next initialized tick using <code>tickBitmap.nextInitializedTickWithinOneWord</code>;</li>
 <li>swap in the range between the current price and the next initialized tick (using <code>SwapMath.computeSwapStep</code>);</li>
@@ -214,7 +214,7 @@ function testSwapBuyEthNotEnoughLiquidity() public {
     pool.swap(address(this), false, swapAmount, extra);
 }
 </code></pre>
-<p>The “Arithmetic over/underflow” happens when the pool tries to send us more ether than it has. This error happens because, in our current implementation, we always expect that there’s enough liquidity to satisfy any swap:</p>
+<p>The &quot;Arithmetic over/underflow&quot; happens when the pool tries to send us more ether than it has. This error happens because, in our current implementation, we always expect that there's enough liquidity to satisfy any swap:</p>
 <pre><code class="language-solidity">// src/lib/SwapMath.sol
 function computeSwapStep(...) {
     ...
@@ -233,9 +233,9 @@ function computeSwapStep(...) {
 <p>To improve this, we need to consider several situations:</p>
 <ol>
 <li>when the range between the current and the next ticks has enough liquidity to fill <code>amountRemaining</code>;</li>
-<li>when the range doesn’t fill the entire <code>amountRemaining</code>.</li>
+<li>when the range doesn't fill the entire <code>amountRemaining</code>.</li>
 </ol>
-<p>In the first case, the swap is done entirely within the range–this is the scenario we have implemented. In the second situation, we’ll consume the whole liquidity provided by the range and <strong>will move to the next range</strong> (if it exists). With this in mind, let’s rework <code>computeSwapStep</code>:</p>
+<p>In the first case, the swap is done entirely within the range–this is the scenario we have implemented. In the second situation, we'll consume the whole liquidity provided by the range and <strong>will move to the next range</strong> (if it exists). With this in mind, let's rework <code>computeSwapStep</code>:</p>
 <pre><code class="language-solidity">// src/lib/SwapMath.sol
 function computeSwapStep(...) {
     ...
@@ -272,12 +272,12 @@ function computeSwapStep(...) {
     );
 }
 </code></pre>
-<p>First, we calculate <code>amountIn</code>–the input amount the current range can satisfy. If it’s smaller than <code>amountRemaining</code>, we say that the current price range cannot fulfill the whole swap, thus the next <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1133em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='1.08em' viewBox='0 0 400000 1080' preserveAspectRatio='xMinYMin slice'><path d='M95,702 c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14 c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54 c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10 s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429 c69,-144,104.5,-217.7,106.5,-221 l0 -0 c5.3,-9.3,12,-14,20,-14 H400000v40H845.2724 s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7 c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span> is the upper/lower <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1133em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='1.08em' viewBox='0 0 400000 1080' preserveAspectRatio='xMinYMin slice'><path d='M95,702 c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14 c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54 c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10 s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429 c69,-144,104.5,-217.7,106.5,-221 l0 -0 c5.3,-9.3,12,-14,20,-14 H400000v40H845.2724 s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7 c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span> of the price range (in other words, we use the entire liquidity of the price range). If <code>amountIn</code> is greater than <code>amountRemaining</code>, we compute <code>sqrtPriceNextX96</code>–it’ll be a price within the current price range.</p>
-<p>In the end, after figuring out the next price, we re-compute <code>amountIn</code> and compute <code>amountOut</code> within this shorter price range (we don’t consume the entire liquidity).</p>
+<p>First, we calculate <code>amountIn</code>–the input amount the current range can satisfy. If it's smaller than <code>amountRemaining</code>, we say that the current price range cannot fulfill the whole swap, thus the next <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1133em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='1.08em' viewBox='0 0 400000 1080' preserveAspectRatio='xMinYMin slice'><path d='M95,702 c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14 c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54 c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10 s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429 c69,-144,104.5,-217.7,106.5,-221 l0 -0 c5.3,-9.3,12,-14,20,-14 H400000v40H845.2724 s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7 c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span> is the upper/lower <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1133em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='1.08em' viewBox='0 0 400000 1080' preserveAspectRatio='xMinYMin slice'><path d='M95,702 c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14 c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54 c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10 s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429 c69,-144,104.5,-217.7,106.5,-221 l0 -0 c5.3,-9.3,12,-14,20,-14 H400000v40H845.2724 s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7 c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span> of the price range (in other words, we use the entire liquidity of the price range). If <code>amountIn</code> is greater than <code>amountRemaining</code>, we compute <code>sqrtPriceNextX96</code>–it'll be a price within the current price range.</p>
+<p>In the end, after figuring out the next price, we re-compute <code>amountIn</code> and compute <code>amountOut</code> within this shorter price range (we don't consume the entire liquidity).</p>
 <p>I hope this makes sense!</p>
 <h2 id="updating-the-swap-function"><a class="header" href="#updating-the-swap-function">Updating the <code>swap</code> Function</a></h2>
-<p>Now, in the <code>swap</code> function, we need to handle the case we introduced in the previous part: when the swap price reaches a boundary of a price range. When this happens, we want to deactivate the price range we’re leaving and activate the next price range.  We also want to start another iteration of the loop and try to find another tick with liquidity.</p>
-<p>Before updating the loop, let’s save the second value returned by the <code>tickBitmap.nextInitializedTickWithinOneWord()</code> call into <code>step.initialized</code>:</p>
+<p>Now, in the <code>swap</code> function, we need to handle the case we introduced in the previous part: when the swap price reaches a boundary of a price range. When this happens, we want to deactivate the price range we're leaving and activate the next price range.  We also want to start another iteration of the loop and try to find another tick with liquidity.</p>
+<p>Before updating the loop, let's save the second value returned by the <code>tickBitmap.nextInitializedTickWithinOneWord()</code> call into <code>step.initialized</code>:</p>
 <pre><code class="language-solidity">(step.nextTick, step.initialized) = tickBitmap.nextInitializedTickWithinOneWord(
     state.tick,
     1,
@@ -285,8 +285,8 @@ function computeSwapStep(...) {
 );
 </code></pre>
 <p>(In the previous milestone we stored only <code>step.nextTick</code>.)</p>
-<p>Knowing if the next tick is initialized or not will help us save some gas in situations when there’s no initialized tick in the current word in the ticks bitmap.</p>
-<p>Now, here’s what we need to add to the end of the loop:</p>
+<p>Knowing if the next tick is initialized or not will help us save some gas in situations when there's no initialized tick in the current word in the ticks bitmap.</p>
+<p>Now, here's what we need to add to the end of the loop:</p>
 <pre><code class="language-solidity">if (state.sqrtPriceX96 == step.sqrtPriceNextX96) {
     if (step.initialized) {
         int128 liquidityDelta = ticks.cross(step.nextTick);
@@ -306,8 +306,8 @@ function computeSwapStep(...) {
     state.tick = TickMath.getTickAtSqrtRatio(state.sqrtPriceX96);
 }
 </code></pre>
-<p>The second branch is what we had before–it handles the case when the current price stays within the range. So let’s focus on the first one.</p>
-<p>Here, we’re updating the current liquidity, but only if the next tick is initialized (if it’s not, we skip adding 0 to the liquidity to save gas).</p>
+<p>The second branch is what we had before–it handles the case when the current price stays within the range. So let's focus on the first one.</p>
+<p>Here, we're updating the current liquidity, but only if the next tick is initialized (if it's not, we skip adding 0 to the liquidity to save gas).</p>
 <p><code>state.sqrtPriceX96</code> is the new current price, i.e. the price that will be set after the current swap; <code>step.sqrtPriceNextX96</code> is the price at the next initialized tick. If these are equal, we have reached a price range boundary. As explained above, when this happens, we want to update <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span> (add or remove liquidity) and continue the swap using the boundary tick as the current tick.</p>
 <p>By convention, crossing a tick means crossing it from left to right. Thus, crossing lower ticks always adds liquidity, and crossing upper ticks always removes it. However, when <code>zeroForOne</code> is true, we negate the sign: when the price goes down (token <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span> is being sold), upper ticks add liquidity and lower ticks remove it.</p>
 <p>When updating <code>state.tick</code>, if the price moves down (<code>zeroForOne</code> is true), we need to subtract 1 to step out of the price range. When moving up (<code>zeroForOne</code> is false), the current tick is always excluded in <code>TickBitmap.nextInitializedTickWithinOneWord</code>.</p>
@@ -316,7 +316,7 @@ function computeSwapStep(...) {
 </code></pre>
 <p>Within the loop, we update <code>state.liquidity</code> multiple times when entering/leaving price ranges. After a swap, we need to update the global <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span> for it to reflect the liquidity available at the new current price. Also, the reason why we only update the global variable when finishing the swap is gas consumption optimization, since writing to the storage of a contract is an expensive operation.</p>
 <h2 id="liquidity-tracking-and-ticks-crossing"><a class="header" href="#liquidity-tracking-and-ticks-crossing">Liquidity Tracking and Ticks Crossing</a></h2>
-<p>Let’s now look at the updated <code>Tick</code> library.</p>
+<p>Let's now look at the updated <code>Tick</code> library.</p>
 <p>The first change is in the <code>Tick.Info</code> structure: we now have two variables to track tick liquidity:</p>
 <pre><code class="language-solidity">struct Info {
     bool initialized;
@@ -326,7 +326,7 @@ function computeSwapStep(...) {
     int128 liquidityNet;
 }
 </code></pre>
-<p><code>liquidityGross</code> tracks the absolute liquidity amount of a tick. It’s needed to find if a tick was flipped or not. <code>liquidityNet</code>, on the other hand, is a signed integer–it tracks the amount of liquidity added (in case of lower tick) or removed (in case of upper tick) when a tick is crossed.</p>
+<p><code>liquidityGross</code> tracks the absolute liquidity amount of a tick. It's needed to find if a tick was flipped or not. <code>liquidityNet</code>, on the other hand, is a signed integer–it tracks the amount of liquidity added (in case of lower tick) or removed (in case of upper tick) when a tick is crossed.</p>
 <p><code>liquidityNet</code> is set in the <code>update</code> function:</p>
 <pre><code class="language-solidity">function update(
     mapping(int24 =&gt; Tick.Info) storage self,
@@ -341,7 +341,7 @@ function computeSwapStep(...) {
         : int128(int256(tickInfo.liquidityNet) + liquidityDelta);
 }
 </code></pre>
-<p>The <code>cross</code> function we saw above simply returns <code>liquidityNet</code> (it’ll get more complicated after we introduce new features in later milestones):</p>
+<p>The <code>cross</code> function we saw above simply returns <code>liquidityNet</code> (it'll get more complicated after we introduce new features in later milestones):</p>
 <pre><code class="language-solidity">function cross(mapping(int24 =&gt; Tick.Info) storage self, int24 tick)
     internal
     view
@@ -352,12 +352,12 @@ function computeSwapStep(...) {
 }
 </code></pre>
 <h2 id="testing"><a class="header" href="#testing">Testing</a></h2>
-<p>Let’s review different liquidity setups and test them to ensure our pool implementation can handle them correctly.</p>
+<p>Let's review different liquidity setups and test them to ensure our pool implementation can handle them correctly.</p>
 <h3 id="one-price-range"><a class="header" href="#one-price-range">One Price Range</a></h3>
 <p><img src="images/swap_within_price_range.png" alt="Swap within price range" /></p>
 <p>This is the scenario we had earlier. After we have updated the code, we need to ensure old functionality keeps working correctly.</p>
 <blockquote>
-<p>For brevity, I’ll show only the most important parts of the tests. You can find full tests in <a href="https://github.com/Jeiwan/uniswapv3-code/blob/milestone_3/test/UniswapV3Pool.Swaps.t.sol">the code repo</a>.</p>
+<p>For brevity, I'll show only the most important parts of the tests. You can find full tests in <a href="https://github.com/Jeiwan/uniswapv3-code/blob/milestone_3/test/UniswapV3Pool.Swaps.t.sol">the code repo</a>.</p>
 </blockquote>
 <ul>
 <li>When buying ETH:
@@ -588,8 +588,8 @@ function computeSwapStep(...) {
 </code></pre>
 </li>
 </ul>
-<p>This is a variation of the previous scenario, but this time the price ranges are partially overlapping. In the areas where the price ranges overlap, there’s deeper liquidity, which makes the price movements slower. This is similar to providing more liquidity into the overlapping ranges.</p>
-<p>Also notice that, in both swaps, we got more tokens than in the “Consecutive Price Ranges” scenarios–this is again due to deeper liquidity in the overlapping ranges.</p>
+<p>This is a variation of the previous scenario, but this time the price ranges are partially overlapping. In the areas where the price ranges overlap, there's deeper liquidity, which makes the price movements slower. This is similar to providing more liquidity into the overlapping ranges.</p>
+<p>Also notice that, in both swaps, we got more tokens than in the &quot;Consecutive Price Ranges&quot; scenarios–this is again due to deeper liquidity in the overlapping ranges.</p>
 
                     </main>
 

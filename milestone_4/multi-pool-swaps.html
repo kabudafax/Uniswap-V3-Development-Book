@@ -181,7 +181,7 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="multi-pool-swaps"><a class="header" href="#multi-pool-swaps">Multi-Pool Swaps</a></h1>
-<p>We’re now proceeding to the core of this milestone–implementing multi-pool swaps in our contracts. We won’t touch the Pool contract in this milestone because it’s a core contract that should implement only core features. Multi-pool swaps are a utility feature, and we’ll implement it in the Manager and Quoter contracts.</p>
+<p>We're now proceeding to the core of this milestone–implementing multi-pool swaps in our contracts. We won't touch the Pool contract in this milestone because it's a core contract that should implement only core features. Multi-pool swaps are a utility feature, and we'll implement it in the Manager and Quoter contracts.</p>
 <h2 id="updating-the-manager-contract"><a class="header" href="#updating-the-manager-contract">Updating the Manager Contract</a></h2>
 <h3 id="single-pool-and-multi-pool-swaps"><a class="header" href="#single-pool-and-multi-pool-swaps">Single-Pool and Multi-Pool Swaps</a></h3>
 <p>In our current implementation, the <code>swap</code> function in the Manager contract supports only single-pool swaps and takes pool address in parameters:</p>
@@ -193,7 +193,7 @@
     bytes calldata data
 ) public returns (int256, int256) { ... }
 </code></pre>
-<p>We’re going to split it into two functions: single-pool swap and multi-pool swap. These functions will have different set of parameters:</p>
+<p>We're going to split it into two functions: single-pool swap and multi-pool swap. These functions will have different set of parameters:</p>
 <pre><code class="language-solidity">struct SwapSingleParams {
     address tokenIn;
     address tokenOut;
@@ -214,7 +214,7 @@ struct SwapParams {
 <li><code>SwapParams</code> takes path, output amount recipient, input amount, and minimal output amount. The latter parameter replaces <code>sqrtPriceLimitX96</code> because, when doing multi-pool swaps, we cannot use the slippage protection from the Pool contract (which uses a limiting price). We need to implement another slippage protection, which checks the final output amount and compares it with <code>minAmountOut</code>: the slippage protection fails when the final output amount is smaller than <code>minAmountOut</code>.</li>
 </ol>
 <h3 id="core-swapping-logic"><a class="header" href="#core-swapping-logic">Core Swapping Logic</a></h3>
-<p>Let’s implement an internal <code>_swap</code> function that will be called by both single- and multi-pool swap functions. It’ll prepare parameters and call <code>Pool.swap</code>.</p>
+<p>Let's implement an internal <code>_swap</code> function that will be called by both single- and multi-pool swap functions. It'll prepare parameters and call <code>Pool.swap</code>.</p>
 <pre><code class="language-solidity">function _swap(
     uint256 amountIn,
     address recipient,
@@ -229,7 +229,7 @@ struct SwapParams {
     address payer;
 }
 </code></pre>
-<p><code>path</code> is a swap path and <code>payer</code> is the address that provides input tokens in swaps–we’ll have different payers during multi-pool swaps. </p>
+<p><code>path</code> is a swap path and <code>payer</code> is the address that provides input tokens in swaps–we'll have different payers during multi-pool swaps. </p>
 <p>The first thing we do in <code>_swap</code>, is to extract pool parameters using the <code>Path</code> library:</p>
 <pre><code class="language-solidity">// function _swap(...) {
 (address tokenIn, address tokenOut, uint24 tickSpacing) = data
@@ -259,7 +259,7 @@ struct SwapParams {
         abi.encode(data)
     );
 </code></pre>
-<p>This piece is identical to what we had before but this time we’re calling <code>getPool</code> to find the pool. <code>getPool</code> is a function that sorts tokens and calls <code>PoolAddress.computeAddress</code>:</p>
+<p>This piece is identical to what we had before but this time we're calling <code>getPool</code> to find the pool. <code>getPool</code> is a function that sorts tokens and calls <code>PoolAddress.computeAddress</code>:</p>
 <pre><code class="language-solidity">function getPool(
     address token0,
     address token1,
@@ -277,7 +277,7 @@ struct SwapParams {
 <pre><code class="language-solidity">// function _swap(...) {
 amountOut = uint256(-(zeroForOne ? amount1 : amount0));
 </code></pre>
-<p>And that’s it. Let’s now look at how a single-pool swap works.</p>
+<p>And that's it. Let's now look at how a single-pool swap works.</p>
 <h3 id="single-pool-swapping"><a class="header" href="#single-pool-swapping">Single-Pool Swapping</a></h3>
 <p><code>swapSingle</code> acts simply as a wrapper of <code>_swap</code>:</p>
 <pre><code class="language-solidity">function swapSingle(SwapSingleParams calldata params)
@@ -299,15 +299,15 @@ amountOut = uint256(-(zeroForOne ? amount1 : amount0));
     );
 }
 </code></pre>
-<p>Notice that we’re building a one-pool path here: single-pool swap is a multi-pool swap with one pool 🙂.</p>
+<p>Notice that we're building a one-pool path here: single-pool swap is a multi-pool swap with one pool 🙂.</p>
 <h3 id="multi-pool-swapping"><a class="header" href="#multi-pool-swapping">Multi-Pool Swapping</a></h3>
-<p>Multi-pool swapping is only slightly more difficult than single-pool swapping. Let’s look at it:</p>
+<p>Multi-pool swapping is only slightly more difficult than single-pool swapping. Let's look at it:</p>
 <pre><code class="language-solidity">function swap(SwapParams memory params) public returns (uint256 amountOut) {
     address payer = msg.sender;
     bool hasMultiplePools;
     ...
 </code></pre>
-<p>The first swap is paid by the user because it’s the user who provides input tokens.</p>
+<p>The first swap is paid by the user because it's the user who provides input tokens.</p>
 <p>Then, we start iterating over pools in the path:</p>
 <pre><code class="language-solidity">...
 while (true) {
@@ -324,12 +324,12 @@ while (true) {
     );
     ...
 </code></pre>
-<p>In each iteration, we’re calling <code>_swap</code> with these parameters:</p>
+<p>In each iteration, we're calling <code>_swap</code> with these parameters:</p>
 <ol>
-<li><code>params.amountIn</code> tracks input amounts. During the first swap, it’s the amount provided by the user. During the next swaps, it’s the amounts returned from previous swaps.</li>
-<li><code>hasMultiplePools ? address(this) : params.recipient</code>–if there are multiple pools in the path, the recipient is the Manager contract, it’ll store tokens between swaps. If there’s only one pool (the last one) in the path, the recipient is the one specified in the parameters (usually the same user that initiates the swap).</li>
+<li><code>params.amountIn</code> tracks input amounts. During the first swap, it's the amount provided by the user. During the next swaps, it's the amounts returned from previous swaps.</li>
+<li><code>hasMultiplePools ? address(this) : params.recipient</code>–if there are multiple pools in the path, the recipient is the Manager contract, it'll store tokens between swaps. If there's only one pool (the last one) in the path, the recipient is the one specified in the parameters (usually the same user that initiates the swap).</li>
 <li><code>sqrtPriceLimitX96</code> is set to 0 to disable slippage protection in the Pool contract.</li>
-<li>The last parameter is what we pass to <code>uniswapV3SwapCallback</code>–we’ll look at it shortly.</li>
+<li>The last parameter is what we pass to <code>uniswapV3SwapCallback</code>–we'll look at it shortly.</li>
 </ol>
 <p>After making one swap, we need to proceed to the next pool in a path or return:</p>
 <pre><code class="language-solidity">    ...
@@ -343,13 +343,13 @@ while (true) {
     }
 }
 </code></pre>
-<p>This is where we’re changing payer and removing a processed pool from the path.</p>
+<p>This is where we're changing payer and removing a processed pool from the path.</p>
 <p>Finally, the new slippage protection:</p>
 <pre><code class="language-solidity">if (amountOut &lt; params.minAmountOut)
     revert TooLittleReceived(amountOut);
 </code></pre>
 <h3 id="swap-callback"><a class="header" href="#swap-callback">Swap Callback</a></h3>
-<p>Let’s look at the updated swap callback:</p>
+<p>Let's look at the updated swap callback:</p>
 <pre><code class="language-solidity">function uniswapV3SwapCallback(
     int256 amount0,
     int256 amount1,
@@ -375,11 +375,11 @@ while (true) {
 </code></pre>
 <p>The callback expects encoded <code>SwapCallbackData</code> with path and payer address. It extracts pool tokens from the path, figures out the swap direction (<code>zeroForOne</code>), and the amount the contract needs to transfer out. Then, it acts differently depending on the payer address:</p>
 <ol>
-<li>If the payer is the current contract (this is so when making consecutive swaps), it transfers tokens to the next pool (the one that called this callback) from the current contract’s balance.</li>
-<li>If the payer is a different address (the user that initiated the swap), it transfers tokens from the user’s balance.</li>
+<li>If the payer is the current contract (this is so when making consecutive swaps), it transfers tokens to the next pool (the one that called this callback) from the current contract's balance.</li>
+<li>If the payer is a different address (the user that initiated the swap), it transfers tokens from the user's balance.</li>
 </ol>
 <h2 id="updating-the-quoter-contract"><a class="header" href="#updating-the-quoter-contract">Updating the Quoter Contract</a></h2>
-<p>Quoter is another contract that needs to be updated because we want to use it to also find output amounts in multi-pool swaps.  Similarly to Manager, we’ll have two variants of the <code>quote</code> function: single-pool and multi-pool one. Let’s look at the former first.</p>
+<p>Quoter is another contract that needs to be updated because we want to use it to also find output amounts in multi-pool swaps.  Similarly to Manager, we'll have two variants of the <code>quote</code> function: single-pool and multi-pool one. Let's look at the former first.</p>
 <h3 id="single-pool-quoting"><a class="header" href="#single-pool-quoting">Single-pool Quoting</a></h3>
 <p>We need to make only a couple of changes in our current <code>quote</code> implementation:</p>
 <ol>
@@ -431,7 +431,7 @@ function quoteSingle(QuoteSingleParams memory params)
     tickAfterList = new int24[](path.numPools());
     ...
 </code></pre>
-<p>As parameters, we only need an input amount and a swap path. The function returns similar values as <code>quoteSingle</code>, but “price after” and “tick after” are collected after each swap, thus we need to return arrays.</p>
+<p>As parameters, we only need an input amount and a swap path. The function returns similar values as <code>quoteSingle</code>, but &quot;price after&quot; and &quot;tick after&quot; are collected after each swap, thus we need to return arrays.</p>
 <pre><code class="language-solidity">uint256 i = 0;
 while (true) {
     (address tokenIn, address tokenOut, uint24 tickSpacing) = path
@@ -466,7 +466,7 @@ while (true) {
 </code></pre>
 <p>The logic of the loop is identical to the one in the updated <code>swap</code> function:</p>
 <ol>
-<li>get the current pool’s parameters;</li>
+<li>get the current pool's parameters;</li>
 <li>call <code>quoteSingle</code> on the current pool;</li>
 <li>save returned values;</li>
 <li>repeat if there are more pools in the path, or return otherwise.</li>

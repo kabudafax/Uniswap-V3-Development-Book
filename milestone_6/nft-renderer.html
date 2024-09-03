@@ -181,7 +181,7 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="nft-renderer"><a class="header" href="#nft-renderer">NFT Renderer</a></h1>
-<p>Now we need to build an NFT renderer: a library that will handle calls to <code>tokenURI</code> in the NFT manager contract. It will render JSON metadata and an SVG for each minted token. As we discussed earlier, we’ll use the data URI format, which requires base64 encoding–this means we’ll need a base64 encoder in Solidity. But first, let’s look at what our tokens will look like.</p>
+<p>Now we need to build an NFT renderer: a library that will handle calls to <code>tokenURI</code> in the NFT manager contract. It will render JSON metadata and an SVG for each minted token. As we discussed earlier, we'll use the data URI format, which requires base64 encoding–this means we'll need a base64 encoder in Solidity. But first, let's look at what our tokens will look like.</p>
 <h2 id="svg-template"><a class="header" href="#svg-template">SVG Template</a></h2>
 <p>I built this simplified variation of the Uniswap V3 NFTs:</p>
 <p><img src="images/nft_template.png" alt="SVG template for NFT tokens" /></p>
@@ -225,7 +225,7 @@
   &lt;/text&gt;
 &lt;/svg&gt;
 </code></pre>
-<p>This is a simple SVG template, and we’re going to make a Solidity contract that fills the fields in this template and returns it in <code>tokenURI</code>. The fields that will be filled uniquely for each token:</p>
+<p>This is a simple SVG template, and we're going to make a Solidity contract that fills the fields in this template and returns it in <code>tokenURI</code>. The fields that will be filled uniquely for each token:</p>
 <ol>
 <li>the color of the background, which is set in the first two <code>rect</code>s; the hue component (330 in the template) will be unique for each token;</li>
 <li>the names of the tokens of a pool the position belongs to (WETH/USDC in the template);</li>
@@ -236,8 +236,8 @@
 <p><img src="images/nft_example_2.png" alt="NFT example 1" />
 <img src="images/nft_example_3.png" alt="NFT example 2" /></p>
 <h2 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h2>
-<p>Solidity doesn’t provide a native Base64 encoding tool so we’ll use a third-party one. Specifically, we’ll use <a href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Base64.sol">the one from OpenZeppelin</a>.</p>
-<p>Another tedious thing about Solidity is that it has very poor support for operations with strings. For example, there’s no way to convert integers to strings–but we need that to render pool fee and position ticks in the SVG template. We’ll use <a href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Strings.sol">the Strings library from OpenZeppelin</a> to do that.</p>
+<p>Solidity doesn't provide a native Base64 encoding tool so we'll use a third-party one. Specifically, we'll use <a href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Base64.sol">the one from OpenZeppelin</a>.</p>
+<p>Another tedious thing about Solidity is that it has very poor support for operations with strings. For example, there's no way to convert integers to strings–but we need that to render pool fee and position ticks in the SVG template. We'll use <a href="https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Strings.sol">the Strings library from OpenZeppelin</a> to do that.</p>
 <h2 id="format-of-the-result"><a class="header" href="#format-of-the-result">Format of the Result</a></h2>
 <p>The data produced by the renderer will have this format:</p>
 <pre><code>data:application/json;base64,BASE64_ENCODED_JSON
@@ -251,7 +251,7 @@
 </code></pre>
 <p>The image will be the above SVG template filled with position data and encoded in Base64.</p>
 <h2 id="implementing-the-renderer"><a class="header" href="#implementing-the-renderer">Implementing the Renderer</a></h2>
-<p>We’ll implement the renderer in a separate library contract to not make the NFT manager contract too noisy:</p>
+<p>We'll implement the renderer in a separate library contract to not make the NFT manager contract too noisy:</p>
 <pre><code class="language-solidity">library NFTRenderer {
     struct RenderParams {
         address pool;
@@ -266,7 +266,7 @@
     }
 }
 </code></pre>
-<p>In the <code>render</code> function, we’ll first render an SVG, then a JSON. To keep the code cleaner, we’ll break down each step into smaller steps.</p>
+<p>In the <code>render</code> function, we'll first render an SVG, then a JSON. To keep the code cleaner, we'll break down each step into smaller steps.</p>
 <p>We begin with fetching token symbols:</p>
 <pre><code class="language-solidity">function render(RenderParams memory params) {
     IUniswapV3Pool pool = IUniswapV3Pool(params.pool);
@@ -336,7 +336,7 @@
     );
 }
 </code></pre>
-<p>Fees are rendered as numbers with a fractional part. Since all possible fees are known in advance we don’t need to convert integers to fractional numbers and can simply hardcode the values:</p>
+<p>Fees are rendered as numbers with a fractional part. Since all possible fees are known in advance we don't need to convert integers to fractional numbers and can simply hardcode the values:</p>
 <pre><code class="language-solidity">function feeToText(uint256 fee)
     internal
     pure
@@ -382,7 +382,7 @@
 }
 </code></pre>
 <h3 id="json-rendering"><a class="header" href="#json-rendering">JSON Rendering</a></h3>
-<p>Now, let’s return to the <code>render</code> function and render the JSON. First, we need to render a token description:</p>
+<p>Now, let's return to the <code>render</code> function and render the JSON. First, we need to render a token description:</p>
 <pre><code class="language-solidity">function render(RenderParams memory params) {
     ... SVG rendering ...
 
@@ -396,7 +396,7 @@
 
     ...
 </code></pre>
-<p>A token description is a text string that contains all the same information that we render in the token’s SVG:</p>
+<p>A token description is a text string that contains all the same information that we render in the token's SVG:</p>
 <pre><code class="language-solidity">function renderDescription(
     string memory symbol0,
     string memory symbol1,
@@ -440,7 +440,7 @@
     );
 </code></pre>
 <h3 id="filling-the-gap-in-tokenuri"><a class="header" href="#filling-the-gap-in-tokenuri">Filling the Gap in <code>tokenURI</code></a></h3>
-<p>Now we’re ready to return to the <code>tokenURI</code> function in the NFT manager contract and add the actual rendering:</p>
+<p>Now we're ready to return to the <code>tokenURI</code> function in the NFT manager contract and add the actual rendering:</p>
 <pre><code class="language-solidity">function tokenURI(uint256 tokenId)
     public
     view
@@ -468,7 +468,7 @@
 <p>With all its benefits, storing data on-chain has a huge disadvantage: contract deployments become very expensive. When deploying a contract, you pay for the size of the contract, and all the strings and templates increase gas spending significantly. This gets even worse the more advanced your SVGs are: the more there are shapes, CSS styles, animations, etc. the more expensive it gets.</p>
 <p>Keep in mind that the NFT renderer we implemented above is not gas optimized: you can see the repetitive <code>rect</code> and <code>text</code> tag strings that can be extracted into internal functions. I sacrificed gas efficiency for the readability of the contract.  In real NFT projects that store all data on-chain, code readability is usually very poor due to heavy gas cost optimizations.</p>
 <h1 id="testing"><a class="header" href="#testing">Testing</a></h1>
-<p>The last thing I wanted to focus on here is how we can test the NFT images. It’s very important to keep all changes in NFT images tracked to ensure no change breaks rendering. For this, we need a way to test the output of <code>tokenURI</code> and its different variations (we can even pre-render the whole collection and have tests to ensure no image gets broken during development).</p>
+<p>The last thing I wanted to focus on here is how we can test the NFT images. It's very important to keep all changes in NFT images tracked to ensure no change breaks rendering. For this, we need a way to test the output of <code>tokenURI</code> and its different variations (we can even pre-render the whole collection and have tests to ensure no image gets broken during development).</p>
 <p>To test the output of <code>tokenURI</code>, I added this custom assertion:</p>
 <pre><code class="language-solidity">assertTokenURI(
     nft.tokenURI(tokenId0),

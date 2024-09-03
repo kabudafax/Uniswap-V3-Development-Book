@@ -181,23 +181,23 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="swap-path"><a class="header" href="#swap-path">Swap Path</a></h1>
-<p>Let’s imagine that we have only these pools: WETH/USDC, USDC/USDT, and WBTC/USDT. If we want to swap WETH for WBTC, we’ll need to make multiple swaps (WETH→USDC→USDT→WBTC) since there’s no WETH/WBTC pool. We can do this manually or we can improve our contracts to handle such chained, or multi-pool, swaps. Of course, we’ll do the latter!</p>
+<p>Let's imagine that we have only these pools: WETH/USDC, USDC/USDT, and WBTC/USDT. If we want to swap WETH for WBTC, we'll need to make multiple swaps (WETH→USDC→USDT→WBTC) since there's no WETH/WBTC pool. We can do this manually or we can improve our contracts to handle such chained, or multi-pool, swaps. Of course, we'll do the latter!</p>
 <p>When doing multi-pool swaps, we send the output of the previous swap to the input of the next one. For example:</p>
 <ol>
-<li>in the WETH/USDC pool, we’re selling WETH and buying USDC;</li>
-<li>in the USDC/USDT pool, we’re selling USDC from the previous swap and buying USDT;</li>
-<li>in the WBTC/USDT pool, we’re selling USDT from the previous pool and buying WBTC.</li>
+<li>in the WETH/USDC pool, we're selling WETH and buying USDC;</li>
+<li>in the USDC/USDT pool, we're selling USDC from the previous swap and buying USDT;</li>
+<li>in the WBTC/USDT pool, we're selling USDT from the previous pool and buying WBTC.</li>
 </ol>
 <p>We can turn this series into a path:</p>
 <pre><code>WETH/USDC,USDC/USDT,WBTC/USDT
 </code></pre>
-<p>And iterate over such a path in our contracts to perform multiple swaps in one transaction. However, recall from the previous chapter that we don’t need to know pool addresses and, instead, we can derive them from pool parameters. Thus, the above path can be turned into a series of tokens:</p>
+<p>And iterate over such a path in our contracts to perform multiple swaps in one transaction. However, recall from the previous chapter that we don't need to know pool addresses and, instead, we can derive them from pool parameters. Thus, the above path can be turned into a series of tokens:</p>
 <pre><code>WETH, USDC, USDT, WBTC
 </code></pre>
 <p>Recall that tick spacing is another parameter (besides tokens) that identifies a pool. Thus, the above path becomes:</p>
 <pre><code>WETH, 60, USDC, 10, USDT, 60, WBTC
 </code></pre>
-<p>Where 60 and 10 are tick spacings. We’re using 60 in volatile pairs (e.g. ETH/USDC, WBTC/USDT) and 10 in stablecoin pairs (USDC/USDT).</p>
+<p>Where 60 and 10 are tick spacings. We're using 60 in volatile pairs (e.g. ETH/USDC, WBTC/USDT) and 10 in stablecoin pairs (USDC/USDT).</p>
 <p>Now, having such a path, we can iterate over it to build pool parameters for each of the pools:</p>
 <ol>
 <li><code>WETH, 60, USDC</code>;</li>
@@ -208,7 +208,7 @@
 <blockquote>
 <p>We also can use this concept when doing swaps within one pool: the path would simply contain the parameters of one pool. And, thus, we can use swap paths in all swaps, universally.</p>
 </blockquote>
-<p>Let’s build a library to work with swap paths.</p>
+<p>Let's build a library to work with swap paths.</p>
 <h2 id="path-library"><a class="header" href="#path-library">Path Library</a></h2>
 <p>In code, a swap path is a sequence of bytes. In Solidity, a path can be built like this:</p>
 <pre><code class="language-solidity">bytes.concat(
@@ -230,7 +230,7 @@
   00003c                                   # 60
   2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599 # wbtc address
 </code></pre>
-<p>These are the functions that we’ll need to implement:</p>
+<p>These are the functions that we'll need to implement:</p>
 <ol>
 <li>calculating the number of pools in a path;</li>
 <li>figuring out if a path has multiple pools;</li>
@@ -239,7 +239,7 @@
 <li>and decoding first pool parameters.</li>
 </ol>
 <h3 id="calculating-the-number-of-pools-in-a-path"><a class="header" href="#calculating-the-number-of-pools-in-a-path">Calculating the Number of Pools in a Path</a></h3>
-<p>Let’s begin with calculating the number of pools in a path:</p>
+<p>Let's begin with calculating the number of pools in a path:</p>
 <pre><code class="language-solidity">// src/lib/Path.sol
 library Path {
     /// @dev The length the bytes encoded address
@@ -277,8 +277,8 @@ library Path {
 }
 </code></pre>
 <h3 id="extracting-first-pool-parameters-from-a-path"><a class="header" href="#extracting-first-pool-parameters-from-a-path">Extracting First Pool Parameters From a Path</a></h3>
-<p>To implement other functions, we’ll need a helper library because Solidity doesn’t have native bytes manipulation functions. Specifically, we’ll need a function to extract a sub-array from an array of bytes, and a couple of functions to convert bytes to <code>address</code> and <code>uint24</code>.</p>
-<p>Luckily, there’s a great open-source library called <a href="https://github.com/GNSPS/solidity-bytes-utils">solidity-bytes-utils</a>. To use the library, we need to extend the <code>bytes</code> type in the <code>Path</code> library:</p>
+<p>To implement other functions, we'll need a helper library because Solidity doesn't have native bytes manipulation functions. Specifically, we'll need a function to extract a sub-array from an array of bytes, and a couple of functions to convert bytes to <code>address</code> and <code>uint24</code>.</p>
+<p>Luckily, there's a great open-source library called <a href="https://github.com/GNSPS/solidity-bytes-utils">solidity-bytes-utils</a>. To use the library, we need to extend the <code>bytes</code> type in the <code>Path</code> library:</p>
 <pre><code class="language-solidity">library Path {
     using BytesLib for bytes;
     ...
@@ -293,9 +293,9 @@ library Path {
     return path.slice(0, POP_OFFSET);
 }
 </code></pre>
-<p>The function simply returns the first “token address + tick spacing + token address” segment encoded as bytes.</p>
+<p>The function simply returns the first &quot;token address + tick spacing + token address&quot; segment encoded as bytes.</p>
 <h3 id="proceeding-to-a-next-pair-in-a-path"><a class="header" href="#proceeding-to-a-next-pair-in-a-path">Proceeding to a Next Pair in a Path</a></h3>
-<p>We’ll use the next function when iterating over a path and throwing away processed pools. Notice that we’re removing “token address + tick spacing”, not full pool parameters, because we need the other token address to calculate the next pool address.</p>
+<p>We'll use the next function when iterating over a path and throwing away processed pools. Notice that we're removing &quot;token address + tick spacing&quot;, not full pool parameters, because we need the other token address to calculate the next pool address.</p>
 <pre><code class="language-solidity">function skipToken(bytes memory path) internal pure returns (bytes memory) {
     return path.slice(NEXT_OFFSET, path.length - NEXT_OFFSET);
 }
@@ -316,7 +316,7 @@ library Path {
     tokenOut = path.toAddress(NEXT_OFFSET);
 }
 </code></pre>
-<p>Unfortunately, <code>BytesLib</code> doesn’t implement <code>toUint24</code> function but we can implement it ourselves! <code>BytesLib</code> has multiple <code>toUintXX</code> functions, so we can take one of them and convert it to a <code>uint24</code> one:</p>
+<p>Unfortunately, <code>BytesLib</code> doesn't implement <code>toUint24</code> function but we can implement it ourselves! <code>BytesLib</code> has multiple <code>toUintXX</code> functions, so we can take one of them and convert it to a <code>uint24</code> one:</p>
 <pre><code class="language-solidity">library BytesLibExt {
     function toUint24(bytes memory _bytes, uint256 _start)
         internal
@@ -334,7 +334,7 @@ library Path {
     }
 }
 </code></pre>
-<p>We’re doing this in a new library contract, which we can then use in our Path library alongside <code>BytesLib</code>:</p>
+<p>We're doing this in a new library contract, which we can then use in our Path library alongside <code>BytesLib</code>:</p>
 <pre><code class="language-solidity">library Path {
     using BytesLib for bytes;
     using BytesLibExt for bytes;

@@ -181,18 +181,18 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="nft-managercontract"><a class="header" href="#nft-managercontract">NFT ManagerContract</a></h1>
-<p>We’re not going to add NFT-related functionality to the pool contract–we need a separate contract that will merge NFTs and liquidity positions. Recall that, while working on our implementation, we built the <code>UniswapV3Manager</code> contract to facilitate interaction with pool contracts (to make some calculations simpler and to enable multi-pool swaps). This contract was a good demonstration of how core Uniswap contracts can be extended. And we’re going to push this idea a little bit further.</p>
-<p>We’ll need a manager contract that will implement the ERC721 standard and will manage liquidity positions. The contract will have the standard NFT functionality (minting, burning, transferring, balances and ownership tracking, etc.) and will allow to provide and remove liquidity to pools. The contract will need to be the actual owner of liquidity in pools because we don’t want to let users add liquidity without minting a token and removing the entire liquidity without burning one. We want every liquidity position to be linked to an NFT token, and we want them to be synchronized.</p>
-<p>Let’s see what functions we’ll have in the new contract:</p>
+<p>We're not going to add NFT-related functionality to the pool contract–we need a separate contract that will merge NFTs and liquidity positions. Recall that, while working on our implementation, we built the <code>UniswapV3Manager</code> contract to facilitate interaction with pool contracts (to make some calculations simpler and to enable multi-pool swaps). This contract was a good demonstration of how core Uniswap contracts can be extended. And we're going to push this idea a little bit further.</p>
+<p>We'll need a manager contract that will implement the ERC721 standard and will manage liquidity positions. The contract will have the standard NFT functionality (minting, burning, transferring, balances and ownership tracking, etc.) and will allow to provide and remove liquidity to pools. The contract will need to be the actual owner of liquidity in pools because we don't want to let users add liquidity without minting a token and removing the entire liquidity without burning one. We want every liquidity position to be linked to an NFT token, and we want them to be synchronized.</p>
+<p>Let's see what functions we'll have in the new contract:</p>
 <ol>
-<li>since it’ll be an NFT contract, it’ll have all the ERC721 functions, including <code>tokenURI</code>, which returns the URI of the image of an NFT token;</li>
+<li>since it'll be an NFT contract, it'll have all the ERC721 functions, including <code>tokenURI</code>, which returns the URI of the image of an NFT token;</li>
 <li><code>mint</code> and <code>burn</code> to mint and burn liquidity and NFT tokens at the same time;</li>
 <li><code>addLiquidity</code> and <code>removeLiquidity</code> to add and remove liquidity in existing positions;</li>
 <li><code>collect</code>, to collect tokens after removing liquidity.</li>
 </ol>
-<p>Alright, let’s get to code.</p>
+<p>Alright, let's get to code.</p>
 <h2 id="the-minimal-contract"><a class="header" href="#the-minimal-contract">The Minimal Contract</a></h2>
-<p>Since we don’t want to implement the ERC721 standard from scratch, we’re going to use a library. We already have <a href="https://github.com/transmissions11/solmate">Solmate</a> in the dependencies, so we’re going to use <a href="https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol">its ERC721 implementation</a>.</p>
+<p>Since we don't want to implement the ERC721 standard from scratch, we're going to use a library. We already have <a href="https://github.com/transmissions11/solmate">Solmate</a> in the dependencies, so we're going to use <a href="https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol">its ERC721 implementation</a>.</p>
 <blockquote>
 <p>Using <a href="https://github.com/OpenZeppelin/openzeppelin-contracts/tree/master/contracts/token/ERC721">the ERC721 implementation from OpenZeppelin</a> is also an option, but I prefer the gas-optimized contracts from Solmate.</p>
 </blockquote>
@@ -216,10 +216,10 @@
     }
 }
 </code></pre>
-<p><code>tokenURI</code> will return an empty string until we implement a metadata and SVG renderer. We’ve added the stub so that the Solidity compiler doesn’t fail while we’re working on the rest of the contract (the <code>tokenURI</code> function in the Solmate ERC721 contract is virtual, so we must implement it).</p>
+<p><code>tokenURI</code> will return an empty string until we implement a metadata and SVG renderer. We've added the stub so that the Solidity compiler doesn't fail while we're working on the rest of the contract (the <code>tokenURI</code> function in the Solmate ERC721 contract is virtual, so we must implement it).</p>
 <h2 id="minting"><a class="header" href="#minting">Minting</a></h2>
 <p>Minting, as we discussed earlier, will involve two operations: adding liquidity to a pool and minting an NFT.</p>
-<p>To keep the links between pool liquidity positions and NFTs, we’ll need a mapping and a structure:</p>
+<p>To keep the links between pool liquidity positions and NFTs, we'll need a mapping and a structure:</p>
 <pre><code class="language-solidity">struct TokenPosition {
     address pool;
     int24 lowerTick;
@@ -233,8 +233,8 @@ mapping(uint256 =&gt; TokenPosition) public positions;
 <li>an owner address;</li>
 <li>the boundaries of a position (lower and upper ticks).</li>
 </ol>
-<p>Since the NFT manager contract will be the owner of all positions created via it, we don’t need to store the position’s owner address and we can only store the rest data. The keys in the <code>positions</code> mapping are token IDs; the mapping links NFT IDs to the position data that is required to find a liquidity position.</p>
-<p>Let’s implement minting:</p>
+<p>Since the NFT manager contract will be the owner of all positions created via it, we don't need to store the position's owner address and we can only store the rest data. The keys in the <code>positions</code> mapping are token IDs; the mapping links NFT IDs to the position data that is required to find a liquidity position.</p>
+<p>Let's implement minting:</p>
 <pre><code class="language-solidity">struct MintParams {
     address recipient;
     address tokenA;
@@ -286,7 +286,7 @@ positions[tokenId] = tokenPosition;
 </code></pre>
 <p>This will later help us find liquidity position by token ID.</p>
 <h2 id="adding-liquidity"><a class="header" href="#adding-liquidity">Adding Liquidity</a></h2>
-<p>Next, we’ll implement a function to add liquidity to an existing position, in the case when we want to add more liquidity in a position that already has some. In such cases, we don’t want to mint an NFT, but only to increase the amount of liquidity in an existing position. For that, we’ll only need to provide a token ID and token amounts:</p>
+<p>Next, we'll implement a function to add liquidity to an existing position, in the case when we want to add more liquidity in a position that already has some. In such cases, we don't want to mint an NFT, but only to increase the amount of liquidity in an existing position. For that, we'll only need to provide a token ID and token amounts:</p>
 <pre><code class="language-solidity">function addLiquidity(AddLiquidityParams calldata params)
     public
     returns (
@@ -311,9 +311,9 @@ positions[tokenId] = tokenPosition;
     );
 }
 </code></pre>
-<p>This function ensures there’s an existing token and calls <code>pool.mint()</code> with parameters of an existing position.</p>
+<p>This function ensures there's an existing token and calls <code>pool.mint()</code> with parameters of an existing position.</p>
 <h2 id="remove-liquidity"><a class="header" href="#remove-liquidity">Remove Liquidity</a></h2>
-<p>Recall that in the <code>UniswapV3Manager</code> contract we didn’t implement a <code>burn</code> function because we wanted users to be owners of liquidity positions. Now, we want the NFT manager to be the owner. And we can have liquidity burning implemented in it:</p>
+<p>Recall that in the <code>UniswapV3Manager</code> contract we didn't implement a <code>burn</code> function because we wanted users to be owners of liquidity positions. Now, we want the NFT manager to be the owner. And we can have liquidity burning implemented in it:</p>
 <pre><code class="language-solidity">struct RemoveLiquidityParams {
     uint256 tokenId;
     uint128 liquidity;
@@ -341,7 +341,7 @@ function removeLiquidity(RemoveLiquidityParams memory params)
     );
 }
 </code></pre>
-<p>We’re again checking that the provided token ID is valid. And we also need to ensure that a position has enough liquidity to burn.</p>
+<p>We're again checking that the provided token ID is valid. And we also need to ensure that a position has enough liquidity to burn.</p>
 <h2 id="collecting-tokens"><a class="header" href="#collecting-tokens">Collecting Tokens</a></h2>
 <p>The NFT manager contract can also collect tokens after burning liquidity. Notice that collected tokens are sent to <code>msg.sender</code> since the contract manages liquidity on behalf of the caller:</p>
 <pre><code class="language-solidity">struct CollectParams {
@@ -370,7 +370,7 @@ function collect(CollectParams memory params)
 }
 </code></pre>
 <h2 id="burning"><a class="header" href="#burning">Burning</a></h2>
-<p>Finally, burning. Unlike the other functions of the contract, this function doesn’t do anything with a pool: it only burns an NFT. To burn an NFT, the underlying position must be empty and tokens must be collected. So, if we want to burn an NFT, we need to:</p>
+<p>Finally, burning. Unlike the other functions of the contract, this function doesn't do anything with a pool: it only burns an NFT. To burn an NFT, the underlying position must be empty and tokens must be collected. So, if we want to burn an NFT, we need to:</p>
 <ol>
 <li>call <code>removeLiquidity</code> and remove the entire position liquidity;</li>
 <li>call <code>collect</code> to collect the tokens after burning the position;</li>
@@ -392,7 +392,7 @@ function collect(CollectParams memory params)
     totalSupply--;
 }
 </code></pre>
-<p>That’s it!</p>
+<p>That's it!</p>
 
                     </main>
 

@@ -181,19 +181,19 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="multi-pool-swaps"><a class="header" href="#multi-pool-swaps">Multi-Pool Swaps</a></h1>
-<p>After implementing cross-tick swaps, we’ve got close to real Uniswap V3 swaps. One significant limitation of our implementation is that it allows only swaps within a pool–if there’s no pool for a pair of tokens, then swapping between these tokens is not possible. This is not so in Uniswap since it allows multi-pool swaps. In this chapter, we’re going to add multi-pool swaps to our implementation.</p>
-<p>Here’s the plan:</p>
+<p>After implementing cross-tick swaps, we've got close to real Uniswap V3 swaps. One significant limitation of our implementation is that it allows only swaps within a pool–if there's no pool for a pair of tokens, then swapping between these tokens is not possible. This is not so in Uniswap since it allows multi-pool swaps. In this chapter, we're going to add multi-pool swaps to our implementation.</p>
+<p>Here's the plan:</p>
 <ol>
-<li>first, we’ll learn about and implement the Factory contract;</li>
-<li>then, we’ll see how chained or multi-pool swaps work and implement the Path library;</li>
-<li>then, we’ll update the front-end app to support multi-pool swaps;</li>
-<li>we’ll implement a basic router that finds a path between two tokens;</li>
-<li>along the way, we’ll also learn about tick spacing which is a way of optimizing swaps.</li>
+<li>first, we'll learn about and implement the Factory contract;</li>
+<li>then, we'll see how chained or multi-pool swaps work and implement the Path library;</li>
+<li>then, we'll update the front-end app to support multi-pool swaps;</li>
+<li>we'll implement a basic router that finds a path between two tokens;</li>
+<li>along the way, we'll also learn about tick spacing which is a way of optimizing swaps.</li>
 </ol>
 <p>After finishing this chapter, our implementation will be able to handle multi-pool swaps, for example, swapping WBTC for WETH via different stablecoins: WETH → USDC → USDT → WBTC.</p>
-<p>Let’s begin!</p>
+<p>Let's begin!</p>
 <blockquote>
-<p>You’ll find the complete code of this chapter in <a href="https://github.com/Jeiwan/uniswapv3-code/tree/milestone_4">this Github branch</a>.</p>
+<p>You'll find the complete code of this chapter in <a href="https://github.com/Jeiwan/uniswapv3-code/tree/milestone_4">this Github branch</a>.</p>
 <p>This milestone introduces a lot of code changes in existing contracts. <a href="https://github.com/Jeiwan/uniswapv3-code/compare/milestone_3...milestone_4">Here you can see all changes since the last milestone</a></p>
 </blockquote>
 <blockquote>

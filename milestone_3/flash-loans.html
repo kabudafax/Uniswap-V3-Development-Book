@@ -183,9 +183,9 @@
 <h2 id="flash-loans"><a class="header" href="#flash-loans">Flash Loans</a></h2>
 <p>Both Uniswap V2 and V3 implement flash loans: unlimited and uncollateralized loans that must be repaid in the same transaction. Pools give users arbitrary amounts of tokens that they request, but, by the end of the call, the amounts must be repaid, with a small fee on top.</p>
 <p>The fact that flash loans must be repaid in the same transaction means that flash loans cannot be taken by regular users: as a user, you cannot program custom logic in transactions. Flash loans can only be taken and repaid by smart contracts.</p>
-<p>Flash loans are a powerful financial instrument in DeFi. While it’s often used to exploit vulnerabilities in DeFi protocols (by inflating pool balances and abusing flawed state management), it’s many good applications (e.g. leveraged positions management on lending protocols)–this is why DeFi applications that store liquidity provide permissionless flash loans.</p>
+<p>Flash loans are a powerful financial instrument in DeFi. While it's often used to exploit vulnerabilities in DeFi protocols (by inflating pool balances and abusing flawed state management), it's many good applications (e.g. leveraged positions management on lending protocols)–this is why DeFi applications that store liquidity provide permissionless flash loans.</p>
 <h3 id="implementing-flash-loans"><a class="header" href="#implementing-flash-loans">Implementing Flash Loans</a></h3>
-<p>In Uniswap V2 flash loans were part of the swapping functionality: it was possible to borrow tokens during a swap, but you had to return them or an equal amount of the other pool token, in the same transaction. In V3, flash loans are separated from swapping–it’s simply a function that gives the caller a number of tokens they requested, calls a callback on the caller, and ensures a flash loan was repaid:</p>
+<p>In Uniswap V2 flash loans were part of the swapping functionality: it was possible to borrow tokens during a swap, but you had to return them or an equal amount of the other pool token, in the same transaction. In V3, flash loans are separated from swapping–it's simply a function that gives the caller a number of tokens they requested, calls a callback on the caller, and ensures a flash loan was repaid:</p>
 <pre><code class="language-solidity">function flash(
     uint256 amount0,
     uint256 amount1,
@@ -205,8 +205,8 @@
     emit Flash(msg.sender, amount0, amount1);
 }
 </code></pre>
-<p>The function sends tokens to the caller and then calls <code>uniswapV3FlashCallback</code> on it–this is where the caller is expected to repay the loan. Then the function ensures that its balances haven’t decreased. Notice that custom data is allowed to be passed to the callback.</p>
-<p>Here’s an example of the callback implementation:</p>
+<p>The function sends tokens to the caller and then calls <code>uniswapV3FlashCallback</code> on it–this is where the caller is expected to repay the loan. Then the function ensures that its balances haven't decreased. Notice that custom data is allowed to be passed to the callback.</p>
+<p>Here's an example of the callback implementation:</p>
 <pre><code class="language-solidity">function uniswapV3FlashCallback(bytes calldata data) public {
     (uint256 amount0, uint256 amount1) = abi.decode(
         data,
@@ -217,8 +217,8 @@
     if (amount1 &gt; 0) token1.transfer(msg.sender, amount1);
 }
 </code></pre>
-<p>In this implementation, we’re simply sending tokens back to the pool (I used this callback in <code>flash</code> function tests).  In reality, it can use the loaned amounts to perform some operations on other DeFi protocols. But it always must repay the loan in this callback.</p>
-<p>And that’s it!</p>
+<p>In this implementation, we're simply sending tokens back to the pool (I used this callback in <code>flash</code> function tests).  In reality, it can use the loaned amounts to perform some operations on other DeFi protocols. But it always must repay the loan in this callback.</p>
+<p>And that's it!</p>
 
                     </main>
 

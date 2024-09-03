@@ -181,18 +181,18 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="user-interface"><a class="header" href="#user-interface">User Interface</a></h1>
-<p>After introducing swap paths, we can significantly simplify the internals of our web app. First of all, every swap now uses a path since a path doesn’t have to contain multiple pools. Second, it’s now easier to change the direction of a swap: we can simply reverse the path. And, thanks to the unified pool address generation via <code>CREATE2</code> and unique salts, we no longer need to store pool addresses and care about token orders.</p>
-<p>However, we cannot integrate multi-pool swaps in the web app without adding one crucial algorithm. Ask yourself the question: “How to find a path between two tokens that don’t have a pool?”</p>
+<p>After introducing swap paths, we can significantly simplify the internals of our web app. First of all, every swap now uses a path since a path doesn't have to contain multiple pools. Second, it's now easier to change the direction of a swap: we can simply reverse the path. And, thanks to the unified pool address generation via <code>CREATE2</code> and unique salts, we no longer need to store pool addresses and care about token orders.</p>
+<p>However, we cannot integrate multi-pool swaps in the web app without adding one crucial algorithm. Ask yourself the question: &quot;How to find a path between two tokens that don't have a pool?&quot;</p>
 <h2 id="autorouter"><a class="header" href="#autorouter">AutoRouter</a></h2>
-<p>Uniswap implements what’s called <em>AutoRouter</em>, an algorithm that finds the shortest path between two tokens. Moreover, it also splits one payment into multiple smaller payments to find the best average exchange rate. The profit can be as big as <a href="https://uniswap.org/blog/auto-router-v2">36.84% compared to trades that are not split</a>. This sounds great, however, we’re not going to build such an advanced algorithm. Instead, we’ll build something simpler.</p>
+<p>Uniswap implements what's called <em>AutoRouter</em>, an algorithm that finds the shortest path between two tokens. Moreover, it also splits one payment into multiple smaller payments to find the best average exchange rate. The profit can be as big as <a href="https://uniswap.org/blog/auto-router-v2">36.84% compared to trades that are not split</a>. This sounds great, however, we're not going to build such an advanced algorithm. Instead, we'll build something simpler.</p>
 <h2 id="a-simple-router-design"><a class="header" href="#a-simple-router-design">A Simple Router Design</a></h2>
 <p>Suppose we have a whole bunch of pools:</p>
 <p><img src="images/pools_scattered.png" alt="Scattered pools" /></p>
 <p>How do we find the shortest path between two tokens in such a mess?</p>
 <p>The most suitable solution for such kinds of tasks is based on a <em>graph</em>. A graph is a data structure that consists of nodes (objects representing something) and edges (links connecting nodes). We can turn that mess of pools into a graph where each node is a token (that has a pool) and each edge is a pool this token belongs to. So a pool represented as a graph is two nodes connected with an edge. The above pools become this graph:</p>
 <p><img src="images/pools_graph.png" alt="Pools graph" /></p>
-<p>The biggest advantage graphs give us is the ability to traverse its nodes, from one node to another, to find paths. Specifically, we’ll use <a href="https://en.wikipedia.org/wiki/A*_search_algorithm">A* search algorithm</a>. Feel free to learn about how the algorithm works, but, in our app, we’ll use a library to make our life easier. The set of libraries we’ll use is <a href="https://github.com/anvaka/ngraph.graph">ngraph.ngraph</a> for building graphs and <a href="https://github.com/anvaka/ngraph.path">ngraph.path</a> for finding paths (it’s the latter that implements A* search algorithm, as well as some others).</p>
-<p>In the UI app, let’s create a pathfinder. This will be a class that, when instantiated, turns a list of pairs into a graph to later use the graph to find the shortest path between two tokens.</p>
+<p>The biggest advantage graphs give us is the ability to traverse its nodes, from one node to another, to find paths. Specifically, we'll use <a href="https://en.wikipedia.org/wiki/A*_search_algorithm">A* search algorithm</a>. Feel free to learn about how the algorithm works, but, in our app, we'll use a library to make our life easier. The set of libraries we'll use is <a href="https://github.com/anvaka/ngraph.graph">ngraph.ngraph</a> for building graphs and <a href="https://github.com/anvaka/ngraph.path">ngraph.path</a> for finding paths (it's the latter that implements A* search algorithm, as well as some others).</p>
+<p>In the UI app, let's create a pathfinder. This will be a class that, when instantiated, turns a list of pairs into a graph to later use the graph to find the shortest path between two tokens.</p>
 <pre><code class="language-javascript">import createGraph from 'ngraph.graph';
 import path from 'ngraph.path';
 
@@ -212,7 +212,7 @@ class PathFinder {
 
   ...
 </code></pre>
-<p>In the constructor, we’re creating an empty graph and fill it with linked nodes. Each node is a token address and links have associated data, which is tick spacings–we’ll be able to extract this information from paths found by A*. After initializing a graph, we instantiate the A* algorithm implementation.</p>
+<p>In the constructor, we're creating an empty graph and fill it with linked nodes. Each node is a token address and links have associated data, which is tick spacings–we'll be able to extract this information from paths found by A*. After initializing a graph, we instantiate the A* algorithm implementation.</p>
 <p>Next, we need to implement a function that will find a path between tokens and turn it into an array of token addresses and tick spacings:</p>
 <pre><code class="language-javascript">findPath(fromToken, toToken) {
   return this.finder.find(fromToken, toToken).reduce((acc, node, i, orig) =&gt; {
@@ -226,7 +226,7 @@ class PathFinder {
   }, []).reverse();
 }
 </code></pre>
-<p><code>this.finder.find(fromToken, toToken)</code> returns a list of nodes and, unfortunately, doesn’t contain the information about edges between them (we store tick spacings in edges). Thus, we’re calling <code>this.graph.getLink(previousNode, currentNode)</code> to find edges.</p>
+<p><code>this.finder.find(fromToken, toToken)</code> returns a list of nodes and, unfortunately, doesn't contain the information about edges between them (we store tick spacings in edges). Thus, we're calling <code>this.graph.getLink(previousNode, currentNode)</code> to find edges.</p>
 <p>Now, whenever the user changes the input or output token, we can call <code>pathFinder.findPath(token0, token1)</code> to build a new path.</p>
 
                     </main>

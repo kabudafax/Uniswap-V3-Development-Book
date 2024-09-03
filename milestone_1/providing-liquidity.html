@@ -180,43 +180,41 @@
                 <div id="content" class="content">
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
-<h1 id="providing-liquidity"><a class="header" href="#providing-liquidity">Providing Liquidity</a></h1>
-<p>Enough of theory, let’s start coding!</p>
-<p>Create a new folder (mine is called <code>uniswapv3-code</code>), and run <code>forge init --vscode</code> in it–this will initialize a Forge project. The <code>--vscode</code> flag tells Forge to configure the Solidity extension for Forge projects.</p>
-<p>Next, remove the default contract and its test:</p>
+<h1 id="提供流动性"><a class="header" href="#提供流动性">提供流动性</a></h1>
+<p>理论已经够多了，让我们开始编码吧！</p>
+<p>创建一个新文件夹（我的叫做 <code>uniswapv3-code</code>），然后在其中运行 <code>forge init --vscode</code> —— 这将初始化一个 Forge 项目。<code>--vscode</code> 标志告诉 Forge 为 Forge 项目配置 Solidity 扩展。</p>
+<p>接下来，删除默认的合约及其测试：</p>
 <ul>
 <li><code>script/Contract.s.sol</code></li>
 <li><code>src/Contract.sol</code></li>
 <li><code>test/Contract.t.sol</code></li>
 </ul>
-<p>And that’s it! Let’s create our first contract!</p>
-<h2 id="pool-contract"><a class="header" href="#pool-contract">Pool Contract</a></h2>
-<p>As you’ve learned from the introduction, Uniswap deploys multiple Pool contracts, each of which is an exchange market of a pair of tokens. Uniswap groups all its contracts into two categories:</p>
+<p>就是这样！让我们创建我们的第一个合约！</p>
+<h2 id="池子合约"><a class="header" href="#池子合约">池子合约</a></h2>
+<p>正如你在介绍中了解到的，Uniswap 部署了多个池子合约，每个合约都是一对代币的交换市场。Uniswap 将其所有合约分为两类：</p>
 <ul>
-<li>core contracts,</li>
-<li>and periphery contracts.</li>
+<li>核心合约，</li>
+<li>和外围合约。</li>
 </ul>
-<p>Core contracts are, as the name implies, contracts that implement core logic. These are minimal, user-<strong>un</strong>friendly, low-level contracts. Their purpose is to do one thing and do it as reliably and securely as possible. In Uniswap V3, there are 2 such contracts:</p>
+<p>核心合约，顾名思义，是实现核心逻辑的合约。这些是最小的、用户不友好的、低级别的合约。它们的目的是做一件事，并尽可能可靠和安全地做到这一点。在 Uniswap V3 中，有 2 个这样的合约：</p>
 <ol>
-<li>Pool contract, which implements the core logic of a decentralized exchange.</li>
-<li>Factory contract, which serves as a registry of Pool contracts and a contract that makes deployment of pools easier.</li>
+<li>池子合约，实现去中心化交易所的核心逻辑。</li>
+<li>工厂合约，作为池子合约的注册表，并使池子的部署更容易。</li>
 </ol>
-<p>We’ll begin with the pool contract, which implements 99% of the core functionality of Uniswap.</p>
-<p>Create <code>src/UniswapV3Pool.sol</code>:</p>
+<p>我们将从池子合约开始，它实现了 Uniswap 99% 的核心功能。</p>
+<p>创建 <code>src/UniswapV3Pool.sol</code>：</p>
 <pre><code class="language-solidity">pragma solidity ^0.8.14;
 
 contract UniswapV3Pool {}
 </code></pre>
-<p>Let’s think about what data the contract will store:</p>
-<ol>
-<li>Since every pool contract is an exchange market of two tokens, we need to track the two token addresses. These addresses will be static, set once and forever during pool deployment (thus, they will be immutable).</li>
-<li>Each pool contract is a set of liquidity positions. We’ll store them in a mapping, where keys are unique position identifiers and values are structs holding information about positions.</li>
-<li>Each pool contract will also need to maintain a ticks registry–this will be a mapping with keys being tick indexes and values being structs storing information about ticks.</li>
-<li>Since the tick range is limited, we need to store the limits in the contract, as constants.</li>
-<li>Recall that pool contracts store the amount of liquidity, <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span>. So we’ll need to have a variable for it.</li>
-<li>Finally, we need to track the current price and the related tick. We’ll store them in one storage slot to optimize gas consumption: these variables will be often read and written together, so it makes sense to benefit from <a href="https://docs.soliditylang.org/en/v0.8.17/internals/layout_in_storage.html">the state variables packing feature of Solidity</a>.</li>
-</ol>
-<p>All in all, this is what we begin with:</p>
+<p>让我们思考一下合约将存储哪些数据：</p>
+<p>由于每个池子合约都是两个代币的交换市场，我们需要跟踪这两个代币地址。这些地址将是静态的，在池子部署期间一次性设置（因此，它们将是不可变的）。</p>
+<p>每个池子合约都是一组流动性头寸。我们将它们存储在一个映射中，其中键是唯一的头寸标识符，值是存储头寸信息的结构体。</p>
+<p>每个池子合约还需要维护一个 tick 注册表 —— 这将是一个映射，其中键是 tick 索引，值是存储 tick 信息的结构体。</p>
+<p>由于 tick 范围是有限的，我们需要在合约中将限制存储为常量。</p>
+<p>回想一下，池子合约存储流动性数量 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span>。所以我们需要为它设置一个变量。</p>
+<p>最后，我们需要跟踪当前价格和相关的 tick。我们将它们存储在一个存储槽中以优化 gas 消耗：这些变量经常一起读取和写入，所以利用 Solidity 的状态变量打包特性 是有意义的。</p>
+<p>总的来说，这是我们开始的内容：</p>
 <pre><code class="language-solidity">// src/lib/Tick.sol
 library Tick {
     struct Info {
@@ -243,34 +241,32 @@ contract UniswapV3Pool {
     int24 internal constant MIN_TICK = -887272;
     int24 internal constant MAX_TICK = -MIN_TICK;
 
-    // Pool tokens, immutable
+    // 池子代币，不可变
     address public immutable token0;
     address public immutable token1;
 
-    // Packing variables that are read together
+    // 打包一起读取的变量
     struct Slot0 {
-        // Current sqrt(P)
+        // 当前 sqrt(P)
         uint160 sqrtPriceX96;
-        // Current tick
+        // 当前 tick
         int24 tick;
     }
     Slot0 public slot0;
 
-    // Amount of liquidity, L.
+    // 流动性数量，L。
     uint128 public liquidity;
 
-    // Ticks info
+    // Ticks 信息
     mapping(int24 =&gt; Tick.Info) public ticks;
-    // Positions info
+    // 头寸信息
     mapping(bytes32 =&gt; Position.Info) public positions;
 
     ...
 </code></pre>
-<p>Uniswap V3 uses many helper contracts and <code>Tick</code> and <code>Position</code> are two of them. <code>using A for B</code> is a feature of Solidity that lets you extend type <code>B</code> with functions from library contract <code>A</code>. This simplifies managing complex data structures.</p>
-<blockquote>
-<p>For brevity, I’ll omit a detailed explanation of Solidity syntax and features. Solidity has <a href="https://docs.soliditylang.org/en/latest/">great documentation</a>, don’t hesitate to refer to it if something is not clear!</p>
-</blockquote>
-<p>We’ll then initialize some of the variables in the constructor:</p>
+<p>Uniswap V3 使用了许多辅助合约，Tick 和 Position 是其中的两个。using A for B 是 Solidity 的一个特性，它允许你用库合约 A 中的函数扩展类型 B。这简化了复杂数据结构的管理。</p>
+<p>为了简洁，我将省略对 Solidity 语法和特性的详细解释。Solidity 有 很好的文档，如果有不清楚的地方，不要犹豫查阅它！</p>
+<p>然后我们将在构造函数中初始化一些变量：</p>
 <pre><code class="language-solidity">    constructor(
         address token0_,
         address token1_,
@@ -284,10 +280,10 @@ contract UniswapV3Pool {
     }
 }
 </code></pre>
-<p>Here, we’re setting the token address immutables and setting the current price and tick–we don’t need to provide liquidity for the latter.</p>
-<p>This is our starting point, and our goal in this chapter is to make our first swap using pre-calculated and hard-coded values.</p>
-<h2 id="minting"><a class="header" href="#minting">Minting</a></h2>
-<p>The process of providing liquidity in Uniswap V2 is called <em>minting</em>. The reason is that the V2 pool contract mints tokens (LP-tokens) in exchange for liquidity. V3 doesn’t do that, but it still uses the same name for the function. Let’s use it as well:</p>
+<p>在这里，我们设置了代币地址不可变量，并设置了当前价格和 tick —— 我们不需要为后者提供流动性。</p>
+<p>这是我们的起点，我们在本章的目标是使用预先计算和硬编码的值进行我们的第一次交换。</p>
+<h2 id="铸造"><a class="header" href="#铸造">铸造</a></h2>
+<p>在 Uniswap V2 中，提供流动性的过程被称为<em>铸造</em>。原因是 V2 池子合约会铸造代币（LP-代币）以换取流动性。V3 不这样做，但它仍然使用相同的名称来命名函数。让我们也使用它：</p>
 <pre><code class="language-solidity">function mint(
     address owner,
     int24 lowerTick,
@@ -296,33 +292,27 @@ contract UniswapV3Pool {
 ) external returns (uint256 amount0, uint256 amount1) {
     ...
 </code></pre>
-<p>Our <code>mint</code> function will take:</p>
-<ol>
-<li>Owner’s address, to track the owner of the liquidity.</li>
-<li>Upper and lower ticks, to set the bounds of a price range.</li>
-<li>The amount of liquidity we want to provide.</li>
-</ol>
-<blockquote>
-<p>Notice that user specifies <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span>, not actual token amounts. This is not very convenient of course, but recall that the Pool contract is a core contract–it’s not intended to be user-friendly because it should implement only the core logic.  In a later chapter, we’ll make a helper contract that will convert token amounts to <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span> before calling <code>Pool.mint</code>.</p>
-</blockquote>
-<p>Let’s outline a quick plan of how minting will work:</p>
-<ol>
-<li>a user specifies a price range and an amount of liquidity;</li>
-<li>the contract updates the <code>ticks</code> and <code>positions</code> mappings;</li>
-<li>the contract calculates token amounts the user must send (we’ll pre-calculate and hard code them);</li>
-<li>the contract takes tokens from the user and verifies that the correct amounts were set.</li>
-</ol>
-<p>Let’s begin with checking the ticks:</p>
+<p>我们的 mint 函数将接受：</p>
+<p>所有者地址，用于跟踪流动性的所有者。
+上限和下限 tick，用于设置价格范围的边界。
+我们想要提供的流动性数量。
+注意，用户指定的是 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span>，而不是实际的代币数量。这当然不是很方便，但请记住，Pool 合约是一个核心合约——它不打算对用户友好，因为它应该只实现核心逻辑。在后面的章节中，我们将制作一个辅助合约，在调用 Pool.mint 之前将代币数量转换为 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span>。</p>
+<p>让我们简要概述一下铸造的工作方式：</p>
+<p>用户指定一个价格范围和流动性数量；
+合约更新 ticks 和 positions 映射；
+合约计算用户必须发送的代币数量（我们将预先计算并硬编码它们）；
+合约从用户那里获取代币并验证是否设置了正确的数量。
+让我们从检查 ticks 开始：</p>
 <pre><code class="language-solidity">if (
     lowerTick &gt;= upperTick ||
     lowerTick &lt; MIN_TICK ||
     upperTick &gt; MAX_TICK
 ) revert InvalidTickRange();
 </code></pre>
-<p>And ensuring that some amount of liquidity is provided:</p>
+<p>并确保提供了一些流动性数量：</p>
 <pre><code class="language-solidity">if (amount == 0) revert ZeroLiquidity();
 </code></pre>
-<p>Then, add a tick and a position:</p>
+<p>然后，添加一个 tick 和一个头寸：</p>
 <pre><code class="language-solidity">ticks.update(lowerTick, amount);
 ticks.update(upperTick, amount);
 
@@ -333,7 +323,7 @@ Position.Info storage position = positions.get(
 );
 position.update(amount);
 </code></pre>
-<p>The <code>ticks.update</code> function is:</p>
+<p>ticks.update 函数是：</p>
 <pre><code class="language-solidity">// src/lib/Tick.sol
 function update(
     mapping(int24 =&gt; Tick.Info) storage self,
@@ -351,8 +341,8 @@ function update(
     tickInfo.liquidity = liquidityAfter;
 }
 </code></pre>
-<p>It initializes a tick if it has 0 liquidity and adds new liquidity to it. As you can see, we’re calling this function on both lower and upper ticks, thus liquidity is added to both of them.</p>
-<p>The <code>position.update</code> function is:</p>
+<p>如果 tick 的流动性为 0，它会初始化该 tick，并向其添加新的流动性。如你所见，我们在上下限 tick 上都调用了这个函数，因此流动性被添加到两者中。</p>
+<p>position.update 函数是：</p>
 <pre><code class="language-solidity">// src/libs/Position.sol
 function update(Info storage self, uint128 liquidityDelta) internal {
     uint128 liquidityBefore = self.liquidity;
@@ -361,7 +351,7 @@ function update(Info storage self, uint128 liquidityDelta) internal {
     self.liquidity = liquidityAfter;
 }
 </code></pre>
-<p>Similar to the tick update function, it adds liquidity to a specific position. To get a position we call:</p>
+<p>类似于 tick 更新函数，它向特定头寸添加流动性。要获取头寸，我们调用：</p>
 <pre><code class="language-solidity">// src/libs/Position.sol
 ...
 function get(
@@ -376,21 +366,113 @@ function get(
 }
 ...
 </code></pre>
-<p>Each position is uniquely identified by three keys: owner address, lower tick index, and upper tick index.  We hash the three to make storing data cheaper: when hashed, every key will take 32 bytes, instead of 96 bytes when <code>owner</code>, <code>lowerTick</code>, and <code>upperTick</code> are separate keys.</p>
-<blockquote>
-<p>If we use three keys, we need three mappings. Each key would be stored separately and would take 32 bytes since Solidity stores values in 32-byte slots (when packing is not applied).</p>
-</blockquote>
-<p>Next, continuing with minting, we need to calculate the amounts that the user must deposit. Luckily, we have already figured out the formulas and calculated the exact amounts in the previous part. So, we’re going to hard-code them:</p>
+<p>每个头寸都由三个键唯一标识：所有者地址、下限 tick 索引和上限 tick 索引。我们对这三个进行哈希处理以使数据存储更便宜：当哈希处理后，每个键将占用 32 字节，而不是当 owner、lowerTick 和 upperTick 是单独的键时占用 96 字节。</p>
+<p>如果我们使用三个键，我们需要三个映射。每个键将单独存储，并且会占用 32 字节，因为 Solidity 将值存储在 32 字节的槽中（当不应用打包时）。</p>
+<p>接下来，继续铸造，我们需要计算用户必须存入的数量。幸运的是，我们已经在前面的部分中弄清楚了公式并计算了确切的数量。所以，我们将硬编码它们：</p>
 <pre><code class="language-solidity">amount0 = 0.998976618347425280 ether;
 amount1 = 5000 ether;
 </code></pre>
 <blockquote>
-<p>We’ll replace these with actual calculations in a later chapter.</p>
+<p>我们将在后面的章节中用实际计算替换这些。</p>
 </blockquote>
-<p>We will also update the <code>liquidity</code> of the pool, based on the <code>amount</code> being added.</p>
+<p>我们还将根据添加的 amount 更新池子的 liquidity。</p>
 <pre><code class="language-solidity">liquidity += uint128(amount);
 </code></pre>
-<p>Now, we’re ready to take tokens from the user. This is done via a callback:</p>
+<h2 id="铸造-1"><a class="header" href="#铸造-1">铸造</a></h2>
+<p>在 Uniswap V2 中，提供流动性的过程被称为<em>铸造</em>。原因是 V2 池子合约会铸造代币（LP-代币）以换取流动性。V3 不这样做，但它仍然使用相同的名称来命名函数。让我们也使用它：</p>
+<pre><code class="language-solidity">function mint(
+    address owner,
+    int24 lowerTick,
+    int24 upperTick,
+    uint128 amount
+) external returns (uint256 amount0, uint256 amount1) {
+    ...
+</code></pre>
+<p>我们的 mint 函数将接受：</p>
+<p>所有者地址，用于跟踪流动性的所有者。
+上限和下限 tick，用于设置价格范围的边界。
+我们想要提供的流动性数量。
+注意，用户指定的是 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span>，而不是实际的代币数量。这当然不是很方便，但请记住，Pool 合约是一个核心合约——它不打算对用户友好，因为它应该只实现核心逻辑。在后面的章节中，我们将制作一个辅助合约，在调用 Pool.mint 之前将代币数量转换为 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span>。</p>
+<p>让我们简要概述一下铸造的工作方式：</p>
+<p>用户指定一个价格范围和流动性数量；
+合约更新 ticks 和 positions 映射；
+合约计算用户必须发送的代币数量（我们将预先计算并硬编码它们）；
+合约从用户那里获取代币并验证是否设置了正确的数量。
+让我们从检查 ticks 开始：</p>
+<pre><code class="language-solidity">if (
+    lowerTick &gt;= upperTick ||
+    lowerTick &lt; MIN_TICK ||
+    upperTick &gt; MAX_TICK
+) revert InvalidTickRange();
+</code></pre>
+<p>并确保提供了一些流动性数量：</p>
+<pre><code class="language-solidity">if (amount == 0) revert ZeroLiquidity();
+</code></pre>
+<p>然后，添加一个 tick 和一个头寸：</p>
+<pre><code class="language-solidity">ticks.update(lowerTick, amount);
+ticks.update(upperTick, amount);
+
+Position.Info storage position = positions.get(
+    owner,
+    lowerTick,
+    upperTick
+);
+position.update(amount);
+</code></pre>
+<p>ticks.update 函数是：</p>
+<pre><code class="language-solidity">// src/lib/Tick.sol
+function update(
+    mapping(int24 =&gt; Tick.Info) storage self,
+    int24 tick,
+    uint128 liquidityDelta
+) internal {
+    Tick.Info storage tickInfo = self[tick];
+    uint128 liquidityBefore = tickInfo.liquidity;
+    uint128 liquidityAfter = liquidityBefore + liquidityDelta;
+
+    if (liquidityBefore == 0) {
+        tickInfo.initialized = true;
+    }
+
+    tickInfo.liquidity = liquidityAfter;
+}
+</code></pre>
+<p>如果 tick 的流动性为 0，它会初始化该 tick，并向其添加新的流动性。如你所见，我们在上下限 tick 上都调用了这个函数，因此流动性被添加到两者中。</p>
+<p>position.update 函数是：</p>
+<pre><code class="language-solidity">// src/libs/Position.sol
+function update(Info storage self, uint128 liquidityDelta) internal {
+    uint128 liquidityBefore = self.liquidity;
+    uint128 liquidityAfter = liquidityBefore + liquidityDelta;
+
+    self.liquidity = liquidityAfter;
+}
+</code></pre>
+<p>类似于 tick 更新函数，它向特定头寸添加流动性。要获取头寸，我们调用：</p>
+<pre><code class="language-solidity">// src/libs/Position.sol
+...
+function get(
+    mapping(bytes32 =&gt; Info) storage self,
+    address owner,
+    int24 lowerTick,
+    int24 upperTick
+) internal view returns (Position.Info storage position) {
+    position = self[
+        keccak256(abi.encodePacked(owner, lowerTick, upperTick))
+    ];
+}
+...
+</code></pre>
+<p>每个头寸都由三个键唯一标识：所有者地址、下限 tick 索引和上限 tick 索引。我们对这三个进行哈希处理以使数据存储更便宜：当哈希处理后，每个键将占用 32 字节，而不是当 owner、lowerTick 和 upperTick 是单独的键时占用 96 字节。</p>
+<p>如果我们使用三个键，我们需要三个映射。每个键将单独存储，并且会占用 32 字节，因为 Solidity 将值存储在 32 字节的槽中（当不应用打包时）。</p>
+<p>接下来，继续铸造，我们需要计算用户必须存入的数量。幸运的是，我们已经在前面的部分中弄清楚了公式并计算了确确切的数量。所以，我们将硬编码它们：</p>
+<pre><code class="language-solidity">amount0 = 0.998976618347425280 ether;
+amount1 = 5000 ether;
+</code></pre>
+<p>我们将在后面的章节中用实际计算替换这些。</p>
+<p>我们还将根据添加的 amount 更新池子的 liquidity。</p>
+<pre><code class="language-solidity">liquidity += uint128(amount);
+</code></pre>
+<p>现在，我们准备从用户那里获取代币。这是通过回调完成的：</p>
 <pre><code class="language-solidity">function mint(...) ... {
     ...
 
@@ -418,16 +500,16 @@ function balance1() internal returns (uint256 balance) {
     balance = IERC20(token1).balanceOf(address(this));
 }
 </code></pre>
-<p>First, we record current token balances. Then we call the <code>uniswapV3MintCallback</code> method on the caller–this is the callback.  It’s expected that the caller (whoever calls <code>mint</code>) is a contract because non-contract addresses cannot implement functions in Ethereum. Using a callback here, while not being user-friendly at all, lets the contract calculate token amounts using its current state–this is critical because we cannot trust users.</p>
-<p>The caller is expected to implement <code>uniswapV3MintCallback</code> and transfer tokens to the Pool contract in this function.  After calling the callback function, we continue with checking whether the Pool contract balances have changed or not: we require them to increase by at least <code>amount0</code> and <code>amount1</code> respectively–this would mean the caller has transferred tokens to the pool.</p>
-<p>Finally, we’re firing a <code>Mint</code> event:</p>
+<p>首先，我们记录当前的代币余额。然后我们在调用者上调用 uniswapV3MintCallback 方法——这就是回调。预期调用者（无论谁调用 mint）是一个合约，因为在以太坊中非合约地址无法实现函数。在这里使用回调，虽然完全不友好，但让合约能够使用其当前状态计算代币数量——这是至关重要的，因为我们不能信任用户。</p>
+<p>预期调用者实现 uniswapV3MintCallback 并在此函数中将代币转移到 Pool 合约。调用回调函数后，我们继续检查 Pool 合约余额是否发生变化：我们要求它们分别至少增加 amount0 和 amount1 ——这意味着调用者已将代币转移到池子。</p>
+<p>最后，我们触发一个 Mint 事件：</p>
 <pre><code class="language-solidity">emit Mint(msg.sender, owner, lowerTick, upperTick, amount, amount0, amount1);
 </code></pre>
-<p>Events is how contract data is indexed in Ethereum for later search. It’s a good practice to fire an event whenever the contract’s state is changed to let blockchain explorer know when this happened. Events also carry useful information. In our case, it’s the caller’s address, the liquidity position owner’s address, upper and lower ticks, new liquidity, and token amounts. This information will be stored as a log, and anyone else will be able to collect all contract events and reproduce the activity of the contract without traversing and analyzing all blocks and transactions.</p>
-<p>And we’re done! Phew! Now, let’s test minting.</p>
-<h2 id="testing"><a class="header" href="#testing">Testing</a></h2>
-<p>At this point, we don’t know if everything works correctly. Before deploying our contract anywhere we’re going to write a bunch of tests to ensure the contract works correctly. Luckily for us, Forge is a great testing framework and it’ll make testing a breeze. </p>
-<p>Create a new test file:</p>
+<p>事件是以太坊中如何索引合约数据以供后续搜索的方式。每当合约状态发生变化时触发事件是一个好习惯，让区块链浏览器知道这何时发生。事件还携带有用信息。在我们的情况下，它是调用者的地址、流动性头寸所有者的地址、上下限 tick、新的流动性和代币数量。这些信息将作为日志存储，其他人将能够收集所有合约事件并重现合约的活动，而无需遍历和分析所有区块和交易。</p>
+<p>我们完成了！呼！现在，让我们测试铸造。</p>
+<h2 id="测试"><a class="header" href="#测试">测试</a></h2>
+<p>在这一点上，我们不知道一切是否正常工作。在将我们的合约部署到任何地方之前，我们将编写一系列测试以确保合约正常工作。幸运的是，Forge 是一个很棒的测试框架，它将使测试变得轻而易举。</p>
+<p>创建一个新的测试文件：</p>
 <pre><code class="language-solidity">// test/UniswapV3Pool.t.sol
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.14;
@@ -442,26 +524,24 @@ contract UniswapV3PoolTest is Test {
     }
 }
 </code></pre>
-<p>Let’s run it:</p>
+<p>让我们运行它：</p>
 <pre><code class="language-shell">$ forge test
 Running 1 test for test/UniswapV3Pool.t.sol:UniswapV3PoolTest
 [PASS] testExample() (gas: 279)
 Test result: ok. 1 passed; 0 failed; finished in 5.07ms
 </code></pre>
-<p>It passes! Of course, it is! So far, our test only checks that <code>true</code> is <code>true</code>!</p>
-<p>Test contracts are just contracts that inherit from <code>forge-std/Test.sol</code>. This contract is a set of testing utilities, we’ll get acquainted with them step by step. If you don’t want to wait, open <code>lib/forge-std/src/Test.sol</code> and skim through it.</p>
-<p>Test contracts follow a specific convention:</p>
-<ol>
-<li><code>setUp</code> function is used to set up test cases. In each test case, we want to have a configured environment, like deployed contracts, minted tokens, and initialized pools–we’ll do all this in <code>setUp</code>.</li>
-<li>Every test case starts with the <code>test</code> prefix, e.g. <code>testMint()</code>. This will let Forge distinguish test cases from helper functions (we can also have any function we want).</li>
-</ol>
-<p>Let’s now actually test minting.</p>
-<h3 id="test-tokens"><a class="header" href="#test-tokens">Test Tokens</a></h3>
-<p>To test minting we need tokens. This is not a problem because we can deploy any contract in tests! Moreover, Forge can install open-source contracts as dependencies. Specifically, we need an ERC20 contract with minting functionality. We’ll use the ERC20 contract from <a href="https://github.com/Rari-Capital/solmate">Solmate</a>, a collection of gas-optimized contracts, and make an ERC20 contract that inherits from the Solmate contract and exposes minting (it’s public by default).</p>
-<p>Let’s install <code>solmate</code>:</p>
+<p>它通过了！当然，它会通过！到目前为止，我们的测试只检查 true 是否为 true！</p>
+<p>测试合约只是继承自 forge-std/Test.sol 的合约。这个合约是一组测试工具，我们将逐步熟悉它们。如果你不想等待，打开 lib/forge-std/src/Test.sol 并浏览一下。</p>
+<p>测试合约遵循特定的约定：</p>
+<p>setUp 函数用于设置测试用例。在每个测试用例中，我们希望有一个配置好的环境，比如部署的合约、铸造的代币和初始化的池子——我们将在 setUp 中完成所有这些。</p>
+<p>每个测试用例都以 test 前缀开始，例如 testMint()。这将让 Forge 区分测试用例和辅助函数（我们也可以有任何我们想要的函数）。</p>
+<p>现在让我们实际测试铸造。</p>
+<p>测试代币
+要测试铸造，我们需要代币。这不是问题，因为我们可以在测试中部署任何合约！此外，Forge 可以将开源合约安装为依赖项。具体来说，我们需要一个具有铸造功能的 ERC20 合约。我们将使用 Solmate（一个气体优化合约集合）中的 ERC20 合约，并制作一个继承自 Solmate 合约并公开铸造功能的 ERC20 合约（默认情况下是公开的）。</p>
+<p>让我们安装 solmate：</p>
 <pre><code class="language-shell">$ forge install rari-capital/solmate
 </code></pre>
-<p>Then, let’s create the <code>ERC20Mintable.sol</code> contract in the <code>test</code> folder (we’ll use the contract only in tests):</p>
+<p>然后，让我们在 test 文件夹中创建 ERC20Mintable.sol 合约（我们只会在测试中使用这个合约）：</p>
 <pre><code class="language-solidity">// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.14;
 
@@ -479,10 +559,10 @@ contract ERC20Mintable is ERC20 {
     }
 }
 </code></pre>
-<p>Our <code>ERC20Mintable</code> inherits all functionality from <code>solmate/tokens/ERC20.sol</code> and we additionally implement the public <code>mint</code> method which will allow us to mint any number of tokens.</p>
-<h3 id="minting-1"><a class="header" href="#minting-1">Minting</a></h3>
-<p>Now, we’re ready to test minting.</p>
-<p>First, let’s deploy all the required contracts:</p>
+<p>我们的 ERC20Mintable 继承了 solmate/tokens/ERC20.sol 的所有功能，我们额外实现了公共的 mint 方法，这将允许我们铸造任意数量的代币。</p>
+<h3 id="铸造-2"><a class="header" href="#铸造-2">铸造</a></h3>
+<p>现在，我们准备测试铸造。</p>
+<p>首先，让我们部署所有必需的合约：</p>
 <pre><code class="language-solidity">// test/UniswapV3Pool.t.sol
 ...
 import &quot;./ERC20Mintable.sol&quot;;
@@ -500,8 +580,8 @@ contract UniswapV3PoolTest is Test {
 
     ...
 </code></pre>
-<p>In the <code>setUp</code> function, we deploy tokens but not pools! This is because all our test cases will use the same tokens but each of them will have a unique pool.</p>
-<p>To make the setting up of pools cleaner and simpler, we’ll do this in a separate function, <code>setupTestCase</code>, that takes a set of test case parameters. In our first test case, we’ll test successful liquidity minting. This is what the test case parameters look like:</p>
+<p>在 setUp 函数中，我们部署代币但不部署池子！这是因为我们所有的测试用例都将使用相同的代币，但每个测试用例都将有一个唯一的池子。</p>
+<p>为了使池子的设置更清晰和简单，我们将在一个单独的函数 setupTestCase 中完成这个操作，该函数接受一组测试用例参数。在我们的第一个测试用例中，我们将测试成功的流动性铸造。以下是测试用例参数的样子：</p>
 <pre><code class="language-solidity">function testMintSuccess() public {
     TestCaseParams memory params = TestCaseParams({
         wethBalance: 1 ether,
@@ -516,13 +596,12 @@ contract UniswapV3PoolTest is Test {
     });
 </code></pre>
 <ol>
-<li>We’re planning to deposit 1 ETH and 5000 USDC into the pool.</li>
-<li>We want the current tick to be 85176, and the lower and upper ticks to be 84222 and 86129 respectively (we calculated these values in the previous chapter).</li>
-<li>We’re specifying the precalculated liquidity and current <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1133em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='1.08em' viewBox='0 0 400000 1080' preserveAspectRatio='xMinYMin slice'><path d='M95,702 c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14 c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54 c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10 s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429 c69,-144,104.5,-217.7,106.5,-221 l0 -0 c5.3,-9.3,12,-14,20,-14 H400000v40H845.2724 s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7 c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span>.</li>
-<li>We also want to deposit liquidity (<code>mintLiquidity</code> parameter) and transfer tokens when requested by the pool contract
-(<code>shouldTransferInCallback</code>). We don’t want to do this in each test case, so we want to have the flags.</li>
+<li>我们计划向池子存入 1 ETH 和 5000 USDC。</li>
+<li>我们希望当前 tick 为 85176，下限和上限 tick 分别为 84222 和 86129（我们在上一章中计算了这些值）。</li>
+<li>我们指定了预先计算的流动性和当前的 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1133em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='1.08em' viewBox='0 0 400000 1080' preserveAspectRatio='xMinYMin slice'><path d='M95,702 c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14 c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54 c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10 s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429 c69,-144,104.5,-217.7,106.5,-221 l0 -0 c5.3,-9.3,12,-14,20,-14 H400000v40H845.2724 s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7 c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span>。</li>
+<li>我们还希望存入流动性（mintLiquidity 参数）并在池子合约请求时转移代币（shouldTransferInCallback）。我们不想在每个测试用例中都这样做，所以我们希望有这些标志。
+接下来，我们用上述参数调用 setupTestCase：</li>
 </ol>
-<p>Next, we’re calling <code>setupTestCase</code> with the above parameters:</p>
 <pre><code class="language-solidity">function setupTestCase(TestCaseParams memory params)
     internal
     returns (uint256 poolBalance0, uint256 poolBalance1)
@@ -549,7 +628,7 @@ contract UniswapV3PoolTest is Test {
     shouldTransferInCallback = params.shouldTransferInCallback;
 }
 </code></pre>
-<p>In this function, we’re minting tokens and deploying a pool. Also, when the <code>mintLiquidity</code> flag is set, we mint liquidity in the pool. In the end, we’re setting the <code>shouldTransferInCallback</code> flag for it to be read in the mint callback:</p>
+<p>在这个函数中，我们铸造代币并部署池子。此外，当设置 mintLiquidity 标志时，我们在池子中铸造流动性。最后，我们设置 shouldTransferInCallback 标志，以便在铸造回调中读取：</p>
 <pre><code class="language-solidity">function uniswapV3MintCallback(uint256 amount0, uint256 amount1) public {
     if (shouldTransferInCallback) {
         token0.transfer(msg.sender, amount0);
@@ -557,17 +636,17 @@ contract UniswapV3PoolTest is Test {
     }
 }
 </code></pre>
-<p>It’s the test contract that will provide liquidity and will call the <code>mint</code> function on the pool, there’re no users. The test contract will act as a user, thus it can implement the mint callback function.</p>
-<p>Setting up test cases like that is not mandatory, you can do it however feels most comfortable to you. Test contracts are just contracts.</p>
-<p>In <code>testMintSuccess</code>, we want to ensure that the pool contract:</p>
+<p>是测试合约提供流动性并在池子上调用 mint 函数，没有用户。测试合约将充当用户，因此它可以实现铸造回调函数。</p>
+<p>像这样设置测试用例并不是强制性的，你可以按照最舒适的方式来做。测试合约只是合约。</p>
+<p>在 testMintSuccess 中，我们希望确保池子合约：</p>
 <ol>
-<li>takes the correct amounts of tokens from us;</li>
-<li>creates a position with correct key and liquidity;</li>
-<li>initializes the upper and lower ticks we’ve specified;</li>
-<li>has correct <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1133em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='1.08em' viewBox='0 0 400000 1080' preserveAspectRatio='xMinYMin slice'><path d='M95,702 c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14 c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54 c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10 s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429 c69,-144,104.5,-217.7,106.5,-221 l0 -0 c5.3,-9.3,12,-14,20,-14 H400000v40H845.2724 s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7 c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span>.</li>
+<li>从我们这里获取正确数量的代币；</li>
+<li>创建具有正确键和流动性的头寸；</li>
+<li>初始化我们指定的上限和下限 tick；</li>
+<li>具有正确的 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1133em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='1.08em' viewBox='0 0 400000 1080' preserveAspectRatio='xMinYMin slice'><path d='M95,702 c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14 c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54 c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10 s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429 c69,-144,104.5,-217.7,106.5,-221 l0 -0 c5.3,-9.3,12,-14,20,-14 H400000v40H845.2724 s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7 c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span> 和 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span>。
+让我们来做这个。</li>
 </ol>
-<p>Let’s do this.</p>
-<p>Minting happens in <code>setupTestCase</code>, so we don’t need to do this again. The function also returns the amounts we have provided, so let’s check them:</p>
+<p>铸造发生在 setupTestCase 中，所以我们不需要再次执行。该函数还返回我们提供的数量，所以让我们检查它们：</p>
 <pre><code class="language-solidity">(uint256 poolBalance0, uint256 poolBalance1) = setupTestCase(params);
 
 uint256 expectedAmount0 = 0.998976618347425280 ether;
@@ -583,21 +662,19 @@ assertEq(
     &quot;incorrect token1 deposited amount&quot;
 );
 </code></pre>
-<p>We expect specific pre-calculated amounts. And we can also check that these amounts were transferred to the pool:</p>
+<p>我们期望特定的预先计算的数量。我们还可以检查这些数量是否已转移到池子：</p>
 <pre><code class="language-solidity">assertEq(token0.balanceOf(address(pool)), expectedAmount0);
 assertEq(token1.balanceOf(address(pool)), expectedAmount1);
 </code></pre>
-<p>Next, we need to check the position the pool created for us. Remember that the key in <code>positions</code> mapping is a hash? We need to calculate it manually and then get our position from the contract:</p>
+<p>接下来，我们需要检查池子为我们创建的头寸。还记得 positions 映射中的键是一个哈希吗？我们需要手动计算它，然后从合约中获取我们的头寸：</p>
 <pre><code class="language-solidity">bytes32 positionKey = keccak256(
     abi.encodePacked(address(this), params.lowerTick, params.upperTick)
 );
 uint128 posLiquidity = pool.positions(positionKey);
 assertEq(posLiquidity, params.liquidity);
 </code></pre>
-<blockquote>
-<p>Since <code>Position.Info</code> is a <a href="https://docs.soliditylang.org/en/latest/types.html#structs">struct</a>, it gets destructured when fetched: each field gets assigned to a separate variable.</p>
-</blockquote>
-<p>Next, come the ticks. Again, it’s straightforward:</p>
+<p>由于 Position.Info 是一个 结构体，当获取时它会被解构：每个字段都被分配给一个单独的变量。</p>
+<p>接下来是 ticks。同样，这很简单：</p>
 <pre><code class="language-solidity">(bool tickInitialized, uint128 tickLiquidity) = pool.ticks(
     params.lowerTick
 );
@@ -608,7 +685,7 @@ assertEq(tickLiquidity, params.liquidity);
 assertTrue(tickInitialized);
 assertEq(tickLiquidity, params.liquidity);
 </code></pre>
-<p>And finally, <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1133em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='1.08em' viewBox='0 0 400000 1080' preserveAspectRatio='xMinYMin slice'><path d='M95,702 c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14 c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54 c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10 s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429 c69,-144,104.5,-217.7,106.5,-221 l0 -0 c5.3,-9.3,12,-14,20,-14 H400000v40H845.2724 s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7 c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span>:</p>
+<p>最后，<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1133em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='1.08em' viewBox='0 0 400000 1080' preserveAspectRatio='xMinYMin slice'><path d='M95,702 c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14 c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54 c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10 s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429 c69,-144,104.5,-217.7,106.5,-221 l0 -0 c5.3,-9.3,12,-14,20,-14 H400000v40H845.2724 s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7 c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span> 和 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">L</span></span></span></span>：</p>
 <pre><code class="language-solidity">(uint160 sqrtPriceX96, int24 tick) = pool.slot0();
 assertEq(
     sqrtPriceX96,
@@ -622,15 +699,15 @@ assertEq(
     &quot;invalid current liquidity&quot;
 );
 </code></pre>
-<p>As you can see, writing tests in Solidity is not hard!</p>
-<h3 id="failures"><a class="header" href="#failures">Failures</a></h3>
-<p>Of course, testing only successful scenarios is not enough. We also need to test failing cases. What can go wrong when providing liquidity? Here are a couple of hints:</p>
+<p>如你所见，用 Solidity 编写测试并不难！</p>
+<h2 id="失败情况"><a class="header" href="#失败情况">失败情况</a></h2>
+<p>当然，仅测试成功场景是不够的。我们还需要测试失败的情况。提供流动性时可能出现什么问题？这里有几个提示：</p>
 <ol>
-<li>Upper and lower ticks are too big or too small.</li>
-<li>Zero liquidity is provided.</li>
-<li>The liquidity provider doesn’t have enough tokens.</li>
+<li>上限和下限 tick 太大或太小。</li>
+<li>提供了零流动性。</li>
+<li>流动性提供者没有足够的代币。</li>
 </ol>
-<p>I’ll leave it to you to implement these scenarios! Feel free to peek at <a href="https://github.com/Jeiwan/uniswapv3-code/blob/milestone_1/test/UniswapV3Pool.t.sol">the code in the repo</a>.</p>
+<p>我将让你来实现这些场景！随时查看<img src="https://github.com/Jeiwan/uniswapv3-code/blob/milestone_1/test/UniswapV3Pool.t.sol" alt="仓库" />中的代码。</p>
 
                     </main>
 

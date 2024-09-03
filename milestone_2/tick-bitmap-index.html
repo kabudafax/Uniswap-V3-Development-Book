@@ -190,10 +190,10 @@
   ...
 }
 </code></pre>
-<p>When there’s liquidity provided in different price ranges, we cannot simply calculate the target tick. We need to <strong>find it</strong>. Thus, we need to index all ticks that have liquidity and then use the index to find ticks to “inject” enough liquidity for a swap. In this step, we’re going to implement such an index.</p>
+<p>When there's liquidity provided in different price ranges, we cannot simply calculate the target tick. We need to <strong>find it</strong>. Thus, we need to index all ticks that have liquidity and then use the index to find ticks to &quot;inject&quot; enough liquidity for a swap. In this step, we're going to implement such an index.</p>
 <h2 id="bitmap"><a class="header" href="#bitmap">Bitmap</a></h2>
-<p>Bitmap is a popular technique of indexing data in a compact way. A bitmap is simply a number represented in the binary system, e.g. 31337 is <code>111101001101001</code>. We can look at it as an array of zeros and ones, with each digit having an index.  We then say that 0 means a flag is not set and 1 means it’s set. So what we get is a very compact array of indexed flags: each byte can fit 8 flags. In Solidity, we can have integers up to 256 bits, which means one <code>uint256</code> can hold 256 flags.</p>
-<p>Uniswap V3 uses this technique to store the information about initialized ticks, that is ticks with some liquidity. When a flag is set (1), the tick has liquidity; when a flag is not set (0), the tick is not initialized. Let’s look at the implementation.</p>
+<p>Bitmap is a popular technique of indexing data in a compact way. A bitmap is simply a number represented in the binary system, e.g. 31337 is <code>111101001101001</code>. We can look at it as an array of zeros and ones, with each digit having an index.  We then say that 0 means a flag is not set and 1 means it's set. So what we get is a very compact array of indexed flags: each byte can fit 8 flags. In Solidity, we can have integers up to 256 bits, which means one <code>uint256</code> can hold 256 flags.</p>
+<p>Uniswap V3 uses this technique to store the information about initialized ticks, that is ticks with some liquidity. When a flag is set (1), the tick has liquidity; when a flag is not set (0), the tick is not initialized. Let's look at the implementation.</p>
 <h2 id="tickbitmap-contract"><a class="header" href="#tickbitmap-contract">TickBitmap Contract</a></h2>
 <p>In the pool contract, the tick index is stored in a state variable:</p>
 <pre><code class="language-solidity">contract UniswapV3Pool {
@@ -202,16 +202,16 @@
     ...
 }
 </code></pre>
-<p>This is mapping where keys are <code>int16</code>’s and values are words (<code>uint256</code>). Imagine an infinite continuous array of ones and zeros:</p>
+<p>This is mapping where keys are <code>int16</code>'s and values are words (<code>uint256</code>). Imagine an infinite continuous array of ones and zeros:</p>
 <p><img src="images/tick_bitmap.png" alt="Tick indexes in tick bitmap" /></p>
-<p>Each element in this array corresponds to a tick. To navigate in this array, we break it into words: sub-arrays of length 256 bits. To find the tick’s position in this array, we do:</p>
+<p>Each element in this array corresponds to a tick. To navigate in this array, we break it into words: sub-arrays of length 256 bits. To find the tick's position in this array, we do:</p>
 <pre><code class="language-solidity">function position(int24 tick) private pure returns (int16 wordPos, uint8 bitPos) {
     wordPos = int16(tick &gt;&gt; 8);
     bitPos = uint8(uint24(tick % 256));
 }
 </code></pre>
 <p>That is: we find its word position and then its bit in this word. <code>&gt;&gt; 8</code> is identical to integer division by 256. So, word position is the integer part of a tick index divided by 256, and bit position is the remainder.</p>
-<p>As an example, let’s calculate word and bit positions for one of our ticks:</p>
+<p>As an example, let's calculate word and bit positions for one of our ticks:</p>
 <pre><code class="language-python">tick = 85176
 word_pos = tick &gt;&gt; 8 # or tick // 2**8
 bit_pos = tick % 256
@@ -232,38 +232,38 @@ print(f&quot;Word {word_pos}, bit {bit_pos}&quot;)
 }
 </code></pre>
 <blockquote>
-<p>Until later in the book, <code>tickSpacing</code> is always 1. Please keep in mind that this value affects which ticks can be initialized: when it equals 1, all ticks can be flipped; when it’s set to a different value, only ticks divisible by the value can be flipped.</p>
+<p>Until later in the book, <code>tickSpacing</code> is always 1. Please keep in mind that this value affects which ticks can be initialized: when it equals 1, all ticks can be flipped; when it's set to a different value, only ticks divisible by the value can be flipped.</p>
 </blockquote>
 <p>After finding word and bit positions, we need to make a mask. A mask is a number that has a single 1 flag set at the bit position of the tick. To find the mask, we simply calculate <code>2**bit_pos</code> (equivalent of <code>1 &lt;&lt; bit_pos</code>):</p>
 <pre><code class="language-python">mask = 2**bit_pos # or 1 &lt;&lt; bit_pos
 print(format(mask, '#0258b'))                                             ↓ here
 #0b0000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 </code></pre>
-<p>Next, to flip a flag, we apply the mask to the tick’s word via bitwise XOR:</p>
+<p>Next, to flip a flag, we apply the mask to the tick's word via bitwise XOR:</p>
 <pre><code class="language-python">word = (2**256) - 1 # set word to all ones
 print(format(word ^ mask, '#0258b'))                                      ↓ here
 #0b1111111111111111111111111111111111111111111111111111111111111111111111101111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
 </code></pre>
-<p>You’ll see that the 184th bit (counting from the right starting at 0) has flipped to 0.</p>
-<p>If a bit is zero, it’ll set it to 1:</p>
+<p>You'll see that the 184th bit (counting from the right starting at 0) has flipped to 0.</p>
+<p>If a bit is zero, it'll set it to 1:</p>
 <pre><code class="language-python">word = 0
 print(format(word ^ mask, '#0258b'))                                      ↓ here
 #0b0000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 </code></pre>
 <h3 id="finding-next-tick"><a class="header" href="#finding-next-tick">Finding Next Tick</a></h3>
 <p>The next step is finding ticks with liquidity using the bitmap index.</p>
-<p>During swapping, we need to find a tick with liquidity that’s before or after the current tick (that is: to the left or the right of it). In the previous milestone, we used to <a href="https://github.com/Jeiwan/uniswapv3-code/blob/85b8605c37a9065c141a234ee2c18d9507eeba22/src/UniswapV3Pool.sol#L142">calculate and hard code it</a>, but now we need to find such tick using the bitmap index. We’ll do this in the <code>TickBitmap.nextInitializedTickWithinOneWord</code> function. In this function, we’ll need to implement two scenarios:</p>
+<p>During swapping, we need to find a tick with liquidity that's before or after the current tick (that is: to the left or the right of it). In the previous milestone, we used to <a href="https://github.com/Jeiwan/uniswapv3-code/blob/85b8605c37a9065c141a234ee2c18d9507eeba22/src/UniswapV3Pool.sol#L142">calculate and hard code it</a>, but now we need to find such tick using the bitmap index. We'll do this in the <code>TickBitmap.nextInitializedTickWithinOneWord</code> function. In this function, we'll need to implement two scenarios:</p>
 <ol>
-<li>When selling token <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span> (ETH in our case), find the next initialized tick in the current tick’s word and <strong>to the right</strong> of the current tick.</li>
-<li>When selling token <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span></span></span></span> (USDC in our case), find the next initialized tick in the next (current + 1) tick’s word and <strong>to the left</strong> of the current tick.</li>
+<li>When selling token <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span> (ETH in our case), find the next initialized tick in the current tick's word and <strong>to the right</strong> of the current tick.</li>
+<li>When selling token <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span></span></span></span> (USDC in our case), find the next initialized tick in the next (current + 1) tick's word and <strong>to the left</strong> of the current tick.</li>
 </ol>
 <p>This corresponds to the price movement when making swaps in either direction:</p>
 <p><img src="images/find_next_tick.png" alt="Finding next initialized tick during a swap" /></p>
 <blockquote>
 <p>Be aware that, in the code, the direction is flipped: when buying token <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span>, we search for initialized ticks <strong>to the left</strong> of the current; when selling token <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span>, we search ticks <strong>to the right</strong>. But this is only true within a word; words are ordered from left to right.</p>
 </blockquote>
-<p>When there’s no initialized tick in the current word, we’ll continue searching in an adjacent word in the next loop cycle.</p>
-<p>Now, let’s look at the implementation:</p>
+<p>When there's no initialized tick in the current word, we'll continue searching in an adjacent word in the next loop cycle.</p>
+<p>Now, let's look at the implementation:</p>
 <pre><code class="language-solidity">function nextInitializedTickWithinOneWord(
     mapping(int16 =&gt; uint256) storage self,
     int24 tick,
@@ -277,7 +277,7 @@ print(format(word ^ mask, '#0258b'))                                      ↓ he
 <li>The first argument makes this function a method of <code>mapping(int16 =&gt; uint256)</code>.</li>
 <li><code>tick</code> is the current tick.</li>
 <li><code>tickSpacing</code> is always 1 until we start using it in Milestone 4.</li>
-<li><code>lte</code> is the flag that sets the direction. When <code>true</code>, we’re selling token <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span> and searching for the next initialized tick to the right of the current one. When <code>false,</code> it’s the other way around. <code>lte</code> equals the swap direction: <code>true</code> when selling token <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span>, <code>false</code> otherwise.</li>
+<li><code>lte</code> is the flag that sets the direction. When <code>true</code>, we're selling token <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span> and searching for the next initialized tick to the right of the current one. When <code>false,</code> it's the other way around. <code>lte</code> equals the swap direction: <code>true</code> when selling token <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span>, <code>false</code> otherwise.</li>
 </ol>
 <pre><code class="language-solidity">if (lte) {
     (int16 wordPos, uint8 bitPos) = position(compressed);
@@ -285,11 +285,11 @@ print(format(word ^ mask, '#0258b'))                                      ↓ he
     uint256 masked = self[wordPos] &amp; mask;
     ...
 </code></pre>
-<p>When selling <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span>, we’re:</p>
+<p>When selling <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span>, we're:</p>
 <ol>
-<li>taking the current tick’s word and bit positions;</li>
+<li>taking the current tick's word and bit positions;</li>
 <li>making a mask where all bits to the right of the current bit position, including it, are ones (<code>mask</code> is all ones, its length = <code>bitPos</code>);</li>
-<li>applying the mask to the current tick’s word.</li>
+<li>applying the mask to the current tick's word.</li>
 </ol>
 <pre><code class="language-solidity">    ...
     initialized = masked != 0;
@@ -298,7 +298,7 @@ print(format(word ^ mask, '#0258b'))                                      ↓ he
         : (compressed - int24(uint24(bitPos))) * tickSpacing;
     ...
 </code></pre>
-<p>Next, <code>masked</code> won’t equal 0 if at least one bit of it is set to 1. If so, there’s an initialized tick; if not, there isn’t (not in the current word). Depending on the result, we either return the index of the next initialized tick or the leftmost bit in the next word–this will allow us to search for initialized ticks in the word during another loop cycle.</p>
+<p>Next, <code>masked</code> won't equal 0 if at least one bit of it is set to 1. If so, there's an initialized tick; if not, there isn't (not in the current word). Depending on the result, we either return the index of the next initialized tick or the leftmost bit in the next word–this will allow us to search for initialized ticks in the word during another loop cycle.</p>
 <pre><code class="language-solidity">    ...
 } else {
     (int16 wordPos, uint8 bitPos) = position(compressed + 1);
@@ -308,9 +308,9 @@ print(format(word ^ mask, '#0258b'))                                      ↓ he
 </code></pre>
 <p>Similarly, when selling <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span></span></span></span>, we:</p>
 <ol>
-<li>take the current tick’s word and bit positions;</li>
+<li>take the current tick's word and bit positions;</li>
 <li>make a different mask, where all bits to the left of the current tick bit position are ones and all the bits to the right are zeros;</li>
-<li>apply the mask to the current tick’s word.</li>
+<li>apply the mask to the current tick's word.</li>
 </ol>
 <p>Again, if there are no initialized ticks to the left, the rightmost bit of the previous word is returned:</p>
 <pre><code class="language-solidity">    ...
@@ -321,8 +321,8 @@ print(format(word ^ mask, '#0258b'))                                      ↓ he
         : (compressed + 1 + int24(uint24((type(uint8).max - bitPos)))) * tickSpacing;
 }
 </code></pre>
-<p>And that’s it!</p>
-<p>As you can see, <code>nextInitializedTickWithinOneWord</code> doesn’t find the exact tick if it’s far away–its scope of search is current or next tick’s word. Indeed, we don’t want to iterate over the infinite bitmap index.</p>
+<p>And that's it!</p>
+<p>As you can see, <code>nextInitializedTickWithinOneWord</code> doesn't find the exact tick if it's far away–its scope of search is current or next tick's word. Indeed, we don't want to iterate over the infinite bitmap index.</p>
 
                     </main>
 

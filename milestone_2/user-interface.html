@@ -181,7 +181,7 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="user-interface"><a class="header" href="#user-interface">User Interface</a></h1>
-<p>Let’s make our web app work more like a real DEX. We can now remove hardcoded swap amounts and let users type arbitrary amounts. Moreover, we can now let users swap in both directions, so we also need a button to swap the token inputs.  After updating, the swap form will look like:</p>
+<p>Let's make our web app work more like a real DEX. We can now remove hardcoded swap amounts and let users type arbitrary amounts. Moreover, we can now let users swap in both directions, so we also need a button to swap the token inputs.  After updating, the swap form will look like:</p>
 <pre><code class="language-jsx">&lt;form className=&quot;SwapForm&quot;&gt;
   &lt;SwapInput
     amount={zeroForOne ? amount0 : amount1}
@@ -229,7 +229,7 @@ const setAmount_ = (setAmountFn) =&gt; {
 }
 </code></pre>
 <p>Notice the <code>callStatic</code> called on <code>quoter</code>–this is what we discussed in the previous chapter: we need to force Ethers.js to make a static call. Since <code>quote</code> is not a <code>pure</code> or <code>view</code> function, Ethers.js will try to call <code>quote</code> in a transaction.</p>
-<p>And that’s it! The UI now allows us to specify arbitrary amounts and swap in either direction!</p>
+<p>And that's it! The UI now allows us to specify arbitrary amounts and swap in either direction!</p>
 
                     </main>
 

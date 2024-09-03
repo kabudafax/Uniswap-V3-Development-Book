@@ -181,8 +181,8 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="tick-rounding"><a class="header" href="#tick-rounding">Tick Rounding</a></h1>
-<p>Let’s review some other changes we need to make to support different tick spacings.</p>
-<p>Tick spacing greater than 1 won’t allow users to select arbitrary price ranges: tick indexes must be multiples of a tick spacing. For example, for tick spacing 60 we can have ticks: 0, 60, 120, 180, etc. Thus, when the user picks a range, we need to “round” it so its boundaries are multiples of the pool’s tick spacing.</p>
+<p>Let's review some other changes we need to make to support different tick spacings.</p>
+<p>Tick spacing greater than 1 won't allow users to select arbitrary price ranges: tick indexes must be multiples of a tick spacing. For example, for tick spacing 60 we can have ticks: 0, 60, 120, 180, etc. Thus, when the user picks a range, we need to &quot;round&quot; it so its boundaries are multiples of the pool's tick spacing.</p>
 <h2 id="nearestusabletick-in-javascript"><a class="header" href="#nearestusabletick-in-javascript"><code>nearestUsableTick</code> in JavaScript</a></h2>
 <p>In <a href="https://github.com/Uniswap/v3-sdk">the Uniswap V3 SDK</a>, the function that does that is called <a href="https://github.com/Uniswap/v3-sdk/blob/b6cd73a71f8f8ec6c40c130564d3aff12c38e693/src/utils/nearestUsableTick.ts">nearestUsableTick</a>:</p>
 <pre><code class="language-javascript">/**
@@ -200,11 +200,11 @@ export function nearestUsableTick(tick: number, tickSpacing: number) {
   else return rounded
 }
 </code></pre>
-<p>At its core, it’s just:</p>
+<p>At its core, it's just:</p>
 <pre><code class="language-javascript">Math.round(tick / tickSpacing) * tickSpacing
 </code></pre>
-<p>Where <code>Math.round</code> is rounding to the nearest integer: when the fractional part is less than 0.5, it rounds to the lower integer; when it’s greater than 0.5 it rounds to the greater integer; and when it’s 0.5, it rounds to the greater integer as well.</p>
-<p>So, in the web app, we’ll use <code>nearestUsableTick</code> when building <code>mint</code> parameters:</p>
+<p>Where <code>Math.round</code> is rounding to the nearest integer: when the fractional part is less than 0.5, it rounds to the lower integer; when it's greater than 0.5 it rounds to the greater integer; and when it's 0.5, it rounds to the greater integer as well.</p>
+<p>So, in the web app, we'll use <code>nearestUsableTick</code> when building <code>mint</code> parameters:</p>
 <pre><code class="language-javascript">const mintParams = {
   tokenA: pair.token0.address,
   tokenB: pair.token1.address,
@@ -217,9 +217,9 @@ export function nearestUsableTick(tick: number, tickSpacing: number) {
 <blockquote>
 <p>In reality, it should be called whenever the user adjusts a price range because we want the user to see the actual price that will be created. In our simplified app, we make it less user-friendly.</p>
 </blockquote>
-<p>However, we also want to have a similar function in Solidity tests, but neither of the math libraries we’re using implements it.</p>
+<p>However, we also want to have a similar function in Solidity tests, but neither of the math libraries we're using implements it.</p>
 <h2 id="nearestusabletick-in-solidity"><a class="header" href="#nearestusabletick-in-solidity"><code>nearestUsableTick</code> in Solidity</a></h2>
-<p>In our smart contract tests, we need a way to round ticks and convert rounded prices to <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1133em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='1.08em' viewBox='0 0 400000 1080' preserveAspectRatio='xMinYMin slice'><path d='M95,702 c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14 c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54 c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10 s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429 c69,-144,104.5,-217.7,106.5,-221 l0 -0 c5.3,-9.3,12,-14,20,-14 H400000v40H845.2724 s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7 c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span>. In a previous chapter, we chose to use <a href="https://github.com/abdk-consulting/abdk-libraries-solidity">ABDKMath64x64</a> to handle fixed-point numbers math in tests. The library, however, doesn’t implement the rounding function we need to port <code>nearestUsableTick</code>, so we’ll need to implement it ourselves:</p>
+<p>In our smart contract tests, we need a way to round ticks and convert rounded prices to <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1133em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='1.08em' viewBox='0 0 400000 1080' preserveAspectRatio='xMinYMin slice'><path d='M95,702 c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14 c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54 c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10 s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429 c69,-144,104.5,-217.7,106.5,-221 l0 -0 c5.3,-9.3,12,-14,20,-14 H400000v40H845.2724 s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7 c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span>. In a previous chapter, we chose to use <a href="https://github.com/abdk-consulting/abdk-libraries-solidity">ABDKMath64x64</a> to handle fixed-point numbers math in tests. The library, however, doesn't implement the rounding function we need to port <code>nearestUsableTick</code>, so we'll need to implement it ourselves:</p>
 <pre><code class="language-solidity">function divRound(int128 x, int128 y)
     internal
     pure
@@ -258,7 +258,7 @@ export function nearestUsableTick(tick: number, tickSpacing: number) {
     }
 }
 </code></pre>
-<p>That’s it!</p>
+<p>That's it!</p>
 
                     </main>
 
