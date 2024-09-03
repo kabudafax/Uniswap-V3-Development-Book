@@ -7,7 +7,8 @@ title = "Uniswap V3 Development Book"
 description = "A book that teaches how to build a clone of Uniswap V3 in Solidity from scratch."
 
 [output.html]
-curly-quotes = true
+# curly-quotes = true
+smart-punctuation = true
 git-repository-url = "https://github.com/Jeiwan/uniswapv3-book"
 git-repository-icon = "fa-github"
 edit-url-template = "https://github.com/Jeiwan/uniswapv3-book/edit/main/{path}"

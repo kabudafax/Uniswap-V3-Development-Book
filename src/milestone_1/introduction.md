@@ -1,22 +1,25 @@
-# Introduction
+# 介绍
 
-In this milestone, we'll build a pool contract that can receive liquidity from users and make swaps within a price range.  To keep it as simple as possible, we'll provide liquidity only in one price range and we'll allow to make swaps only in one direction. Also, we'll calculate all the required math manually to get better intuition before starting to use mathematical libs in Solidity.
+在这个里程碑中，我们将构建一个池子合约，它可以从用户那里接收流动性，并在一个价格范围内进行交换。为了尽可能保持简单，我们将只在一个价格范围内提供流动性，并且只允许在一个方向上进行交换。此外，我们将手动计算所有必需的数学计算，以在开始使用 Solidity 中的数学库之前获得更好的直觉。
 
-Let's model the situation we'll build:
-1. There will be an ETH/USDC pool contract. ETH will be the \\(x\\) reserve, and USDC will be the \\(y\\) reserve.
-1. We'll set the current price to 5000 USDC per 1 ETH.
-1. The range we'll provide liquidity into is 4545-5500 USDC per 1 ETH.
-1. We'll buy some ETH from the pool. At this point, since we have only one price range, we want the price of the trade
-to stay within the price range.
+让我们模拟我们将要构建的情况：
 
-Visually, this model looks like this:
+1. 将会有一个 ETH/USDC 池子合约。ETH 将是 \\(x\\) 储备，USDC 将是 \\(y\\) 储备。
 
-![Buy ETH for USDC visualization](images/buy_eth_model.png)
+2. 我们将把当前价格设置为 1 ETH 兑换 5000 USDC。
 
-Before getting to the code, let's figure out the math and calculate all the parameters of the model. To keep things simple, I'll do math calculations in Python before implementing them in Solidity. This will allow us to focus on the math without diving into the nuances of math in Solidity. This also means that, in smart contracts, we'll hardcode all the amounts. This will allow us to start with a simple minimal viable product.
+3. 我们将提供流动性的范围是 1 ETH 兑换 4545-5500 USDC。
 
-For your convenience, I put all the Python calculations in [unimath.py](https://github.com/Jeiwan/uniswapv3-code/blob/main/unimath.py).
+4. 我们将从池子中购买一些 ETH。在这一点上，由于我们只有一个价格范围，我们希望交易的价格保持在价格范围内。
 
-> You'll find the complete code of this milestone in [this Github branch](https://github.com/Jeiwan/uniswapv3-code/tree/milestone_1).
+视觉上，这个模型看起来像这样：
 
-> If you have any questions, feel free to ask them in [the GitHub Discussion of this milestone](https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-1-first-swap)!
+![用 USDC 购买 ETH 的可视化](images/buy_eth_model.png)
+
+在开始编码之前，让我们弄清楚数学并计算模型的所有参数。为了保持简单，我将在 Python 中进行数学计算，然后再在 Solidity 中实现它们。这将允许我们专注于数学，而不用深入研究 Solidity 中的数学细节。这也意味着，在智能合约中，我们将硬编码所有的金额。这将允许我们从一个简单的最小可行产品开始。
+
+为了方便起见，我把所有的 Python 计算放在了 [unimath.py](https://github.com/Jeiwan/uniswapv3-code/blob/main/unimath.py) 中。
+
+> 你可以在 [这个 Github 分支](https://github.com/Jeiwan/uniswapv3-code/tree/milestone_1) 中找到这个里程碑的完整代码。
+
+> 如果你有任何问题，欢迎在 [这个里程碑的 GitHub 讨论](https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-1-first-swap) 中提出！

@@ -1,34 +1,38 @@
-# Manager Contract
+# 管理器合约
 
-Before deploying our pool contract, we need to solve one problem. As you remember, Uniswap V3 contracts are split into two categories:
-1. Core contracts that implement the core functions and don't provide user-friendly interfaces.
-2. Periphery contracts that implement user-friendly interfaces for the core contracts.
+在部署我们的池子合约之前，我们需要解决一个问题。如你所记得的，Uniswap V3 合约分为两类：
 
-The pool contract is a core contract, it's not supposed to be user-friendly and flexible. It expects the caller to do all the calculations (prices, amounts) and to provide proper call parameters. It also doesn't use ERC20's `transferFrom` to transfer tokens from the caller. Instead, it uses two callbacks:
-1. `uniswapV3MintCallback`, which is called when minting liquidity;
-1. `uniswapV3SwapCallback`, which is called when swapping tokens.
+1. 核心合约，实现核心功能，不提供用户友好的接口。
+2. 外围合约，为核心合约实现用户友好的接口。
 
-In our tests, we implemented these callbacks in the test contract. Since it's only a contract that can implement them, the pool contract cannot be called by regular users (non-contract addresses). This is fine. But not anymore 🙂.
+池子合约是一个核心合约，它不应该是用户友好和灵活的。它期望调用者进行所有的计算（价格、金额）并提供适当的调用参数。它也不使用 ERC20 的 `transferFrom` 来从调用者转移代币。相反，它使用两个回调：
 
-Our next step in the book is deploying the pool contract to a local blockchain and interacting with it from a front-end app. Thus, we need to build a contract that will let non-contract addresses interact with the pool. Let's do this now!
+1. `uniswapV3MintCallback`，在铸造流动性时调用；
+2. `uniswapV3SwapCallback`，在交换代币时调用。
 
-## Workflow
+在我们的测试中，我们在测试合约中实现了这些回调。由于只有合约可以实现它们，普通用户（非合约地址）无法调用池子合约。这没问题。但现在不再是这样了 🙂。
 
-This is how the manager contract will work:
-1. To mint liquidity, we'll approve the spending of tokens to the manager contract.
-1. We'll then call the `mint` function of the manager contract and pass it minting parameters, as well as the address of the pool we want to provide liquidity into.
-1. The manager contract will call the pool's `mint` function and will implement `uniswapV3MintCallback`. It'll have permission to send our tokens to the pool contract.
-1. To swap tokens, we'll also approve the spending of tokens to the manager contract.
-1. We'll then call the `swap` function of the manager contract and, similarly to minting, it'll pass the call to the pool.
-The manager contract will send our tokens to the pool contract, and the pool contract will swap them and send the output amount to us.
+我们在本书中的下一步是将池子合约部署到本地区块链，并从前端应用程序与之交互。因此，我们需要构建一个合约，让非合约地址与池子交互。让我们现在就做这个！
 
-Thus, the manager contract will act as an intermediary between users and pools.
+## 工作流程
 
-## Passing Data to Callbacks
+管理器合约将这样工作：
 
-Before implementing the manager contract, we need to upgrade the pool contract.
+1. 为了铸造流动性，我们将批准管理器合约花费代币。
+2. 然后我们将调用管理器合约的 `mint` 函数，并传递铸造参数，以及我们想要提供流动性的池子地址。
+3. 管理器合约将调用池子的 `mint` 函数并实现 `uniswapV3MintCallback`。它将有权限将我们的代币发送到池子合约。
+4. 为了交换代币，我们也将批准管理器合约花费代币。
+5. 然后我们将调用管理器合约的 `swap` 函数，类似于铸造，它将把调用传递给池子。
+管理器合约将把我们的代币发送到池子合约，池子合约将交换它们并将输出金额发送给我们。
 
-The manager contract will work with any pool and it'll allow any address to call it. To achieve this, we need to upgrade the callbacks: we want to pass different pool addresses and user addresses to them. Let's look at our current implementation of `uniswapV3MintCallback` (in the test contract):
+因此，管理器合约将作为用户和池子之间的中介。
+
+## 向回调传递数据
+
+在实现管理器合约之前，我们需要升级池子合约。
+
+管理器合约将与任何池子一起工作，并允许任何地址调用它。为了实现这一点，我们需要升级回调：我们希望向它们传递不同的池子地址和用户地址。让我们看看我们当前的 `uniswapV3MintCallback` 实现（在测试合约中）：
+
 ```solidity
 function uniswapV3MintCallback(uint256 amount0, uint256 amount1) public {
     if (transferInMintCallback) {
@@ -37,14 +41,14 @@ function uniswapV3MintCallback(uint256 amount0, uint256 amount1) public {
     }
 }
 ```
+这里的关键点：
 
-Key points here:
-1. The function transfers tokens belonging to the test contract–we want it to transfer tokens from the caller by using `transferFrom`.
-1. The function knows `token0` and `token1`, which will be different for every pool.
+该函数转移属于测试合约的代币——我们希望它通过使用 transferFrom 从调用者转移代币。
+该函数知道 token0 和 token1，这对每个池子都会不同。
+想法：我们需要改变回调的参数，以便我们可以传递用户和池子地址。
 
-Idea: we need to change the arguments of the callback so we can pass user and pool addresses.
+现在，让我们看看交换回调：
 
-Now, let's look at the swap callback:
 ```solidity
 function uniswapV3SwapCallback(int256 amount0, int256 amount1) public {
     if (amount0 > 0 && transferInSwapCallback) {
@@ -57,55 +61,58 @@ function uniswapV3SwapCallback(int256 amount0, int256 amount1) public {
 }
 ```
 
-Identically, it transfers tokens from the test contract and it knows `token0` and `token1`.
+同样，它从测试合约转移代币，并且知道 token0 和 token1。
 
-To pass the extra data to the callbacks, we need to pass it to `mint` and `swap` first (since callbacks are called from these functions). However, since this extra data is not used in the functions and to not make their arguments messier, we'll encode the extra data using [abi.encode()](https://docs.soliditylang.org/en/latest/units-and-global-variables.html?highlight=abi.encode#abi-encoding-and-decoding-functions).
+为了向回调传递额外的数据，我们需要首先将其传递给 mint 和 swap（因为回调是从这些函数调用的）。然而，由于这些额外的数据在函数中没有使用，为了不使它们的参数更混乱，我们将使用 abi.encode() 对额外的数据进行编码。
 
-Let's define the extra data as a structure:
+让我们将额外的数据定义为一个结构：
+
 ```solidity
 // src/UniswapV3Pool.sol
-...
+
 struct CallbackData {
     address token0;
     address token1;
     address payer;
 }
-...
 ```
 
-And then pass encoded data to the callbacks:
+然后将编码后的数据传递给回调：
+
 ```solidity
 function mint(
     address owner,
     int24 lowerTick,
     int24 upperTick,
     uint128 amount,
-    bytes calldata data // <--- New line
+    bytes calldata data // <--- 新行
 ) external returns (uint256 amount0, uint256 amount1) {
-    ...
+    
     IUniswapV3MintCallback(msg.sender).uniswapV3MintCallback(
         amount0,
         amount1,
-        data // <--- New line
+        data // <--- 新行
     );
-    ...
+    
 }
 
-function swap(address recipient, bytes calldata data) // <--- `data` added
+
+function swap(address recipient, bytes calldata data) // <--- 添加了 `data`
     public
     returns (int256 amount0, int256 amount1)
 {
-    ...
+    
     IUniswapV3SwapCallback(msg.sender).uniswapV3SwapCallback(
         amount0,
         amount1,
-        data // <--- New line
+        data // <--- 新行
     );
-    ...
+    
 }
 ```
 
-Now, we can read the extra data in the callbacks in the test contract.
+现在，我们可以在测试合约的回调中读取额外的数据。
+
 ```solidity
 function uniswapV3MintCallback(
     uint256 amount0,
@@ -124,11 +131,13 @@ function uniswapV3MintCallback(
 }
 ```
 
-Try updating the rest of the code yourself, and if it gets too difficult, feel free to peek [at this commit](https://github.com/Jeiwan/uniswapv3-code/commit/cda23134fd12a190aaeebe718786545621e16c0e).
+试着自己更新其余的代码，如果变得太困难，可以随时查看 这个提交。
 
-## Implementing Manager Contract
 
-Besides implementing the callbacks, the manager contract won't do much: it'll simply redirect calls to a pool contract. This is a very minimalistic contract at this moment:
+## 实现管理器合约
+
+除了实现回调，管理器合约不会做太多事情：它只会简单地将调用重定向到池子合约。目前这是一个非常简约的合约：
+
 ```solidity
 pragma solidity ^0.8.14;
 
@@ -161,6 +170,6 @@ contract UniswapV3Manager {
 }
 ```
 
-The callbacks are identical to those in the test contract, with the exception that there are no `transferInMintCallback` and `transferInSwapCallback` flags since the manager contract always transfers tokens.
+这些回调与测试合约中的回调相同，只是没有 transferInMintCallback 和 transferInSwapCallback 标志，因为管理器合约总是转移代币。
 
-Well, we're now fully prepared to deploy and integrate with a front-end app!
+好了，我们现在完全准备好部署并与前端应用程序集成了！
