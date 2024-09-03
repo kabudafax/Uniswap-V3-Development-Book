@@ -192,7 +192,7 @@
 ) public returns (int256 amount0, int256 amount1) {
     ...
 </code></pre>
-<p>In the <code>swap</code> function, we add two new parameters: <code>zeroForOne</code> and <code>amountSpecified</code>. <code>zeroForOne</code> is the flag that controls swap direction: when <code>true</code>, <code>token0</code> is traded in for <code>token1</code>; when <code>false,</code> it's the opposite. For example, if <code>token0</code> is ETH and <code>token1</code> is USDC, setting <code>zeroForOne</code> to <code>true</code> means buying USDC for ETH. <code>amountSpecified</code> is the number of tokens the user wants to sell.</p>
+<p>In the <code>swap</code> function, we add two new parameters: <code>zeroForOne</code> and <code>amountSpecified</code>. <code>zeroForOne</code> is the flag that controls swap direction: when <code>true</code>, <code>token0</code> is traded in for <code>token1</code>; when <code>false,</code> it's the opposite. For example, if <code>token0</code> is ETH and <code>token1</code> is USDC, setting <code>zeroForOne</code> to <code>true</code> means buying USDC for ETH. <code>amountSpecified</code> is the number of tokens the user wants to sell. </p>
 <h2 id="filling-orders"><a class="header" href="#filling-orders">Filling Orders</a></h2>
 <p>Since, in Uniswap V3, liquidity is stored in multiple price ranges, the Pool contract needs to find all liquidity that's required to &quot;fill an order&quot; from the user. This is done via iterating over initialized ticks in a direction chosen by the user.</p>
 <p>Before continuing, we need to define two new structures:</p>
