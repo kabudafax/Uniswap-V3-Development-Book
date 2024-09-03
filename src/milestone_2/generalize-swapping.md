@@ -16,7 +16,7 @@ function swap(
     ...
 ```
 
-In the `swap` function, we add two new parameters: `zeroForOne` and `amountSpecified`. `zeroForOne` is the flag that controls swap direction: when `true`, `token0` is traded in for `token1`; when `false,` it's the opposite. For example, if `token0` is ETH and `token1` is USDC, setting `zeroForOne` to `true` means buying USDC for ETH. `amountSpecified` is the number of tokens the user wants to sell.
+In the `swap` function, we add two new parameters: `zeroForOne` and `amountSpecified`. `zeroForOne` is the flag that controls swap direction: when `true`, `token0` is traded in for `token1`; when `false,` it's the opposite. For example, if `token0` is ETH and `token1` is USDC, setting `zeroForOne` to `true` means buying USDC for ETH. `amountSpecified` is the number of tokens the user wants to sell. 
 
 ## Filling Orders
 
