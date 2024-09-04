@@ -180,8 +180,8 @@
                 <div id="content" class="content">
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
-<h1 id="different-price-ranges"><a class="header" href="#different-price-ranges">Different Price Ranges</a></h1>
-<p>The way we implemented it, our Pool contract creates only price ranges that include the current price:</p>
+<h1 id="不同的价格区间"><a class="header" href="#不同的价格区间">不同的价格区间</a></h1>
+<p>根据我们的实现方式，我们的Pool合约只创建包含当前价格的价格区间：</p>
 <pre><code class="language-solidity">// src/UniswapV3Pool.sol
 function mint() {
     ...
@@ -201,29 +201,29 @@ function mint() {
     ...
 }
 </code></pre>
-<p>From this piece, you can also see that we always update the liquidity tracker (which tracks only currently available liquidity, i.e. liquidity available at the current price).</p>
-<p>However, in reality, price ranges can also be created <strong>below or above</strong> the current price. That's it: the design of Uniswap V3 allows liquidity providers to provide liquidity that doesn't get immediately used. Such liquidity gets &quot;injected&quot; when the current price gets into such &quot;sleeping&quot; price ranges.</p>
-<p>These are kinds of price ranges that can exist:</p>
+<p>从这段代码中，你也可以看到我们总是更新流动性跟踪器（它只跟踪当前可用的流动性，即当前价格下可用的流动性）。</p>
+<p>然而，在现实中，价格区间也可以在当前价格的<strong>下方或上方</strong>创建。是的：Uniswap V3的设计允许流动性提供者提供不会立即使用的流动性。当当前价格进入这些&quot;休眠&quot;价格区间时，这种流动性会被&quot;注入&quot;。</p>
+<p>以下是可能存在的价格区间类型：</p>
 <ol>
-<li>Active price range, i.e. one that includes the current price.</li>
-<li>Price range placed below the current price. The upper tick of this range is below the current tick.</li>
-<li>Price range placed above the current price. The lower tick of this range is above the current tick.</li>
+<li>活跃价格区间，即包含当前价格的区间。</li>
+<li>位于当前价格下方的价格区间。这个区间的上限价格刻度低于当前价格刻度。</li>
+<li>位于当前价格上方的价格区间。这个区间的下限价格刻度高于当前价格刻度。</li>
 </ol>
-<h2 id="limit-orders"><a class="header" href="#limit-orders">Limit Orders</a></h2>
-<p>An interesting fact about inactive liquidity (i.e. liquidity not provided at the current price) is that it acts as <em>limit orders</em>.</p>
-<p>In trading, limit orders are orders that get executed when the price crosses a level chosen by the trader. For example, you can place a limit order that buys 1 ETH when its price drops to $1000. Similarly, you can use limit order to sell assets.  With Uniswap V3, you can get similar behavior by placing liquidity at ranges that are below or above the current price. Let's see how this works:</p>
-<p><img src="images/ranges_outside_current_price.png" alt="Liquidity ranges outside of the current price" /></p>
-<p>If you provide liquidity below the current price (i.e. the price range you chose lays entirely below the current price) or above it, then your whole liquidity will be composed of <strong>only one asset</strong>–the asset will be the cheaper one of the two.  In our example, we're building a pool with ETH being token <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span> and USDC being token <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span></span></span></span>, and we define the price as:</p>
+<h2 id="限价订单"><a class="header" href="#限价订单">限价订单</a></h2>
+<p>关于非活跃流动性（即不在当前价格提供的流动性）的一个有趣事实是，它充当了<em>限价订单</em>的角色。</p>
+<p>在交易中，限价订单是当价格跨越交易者选择的水平时执行的订单。例如，你可以下一个限价订单，当ETH价格下降到1000美元时买入1个ETH。同样，你也可以使用限价订单来卖出资产。使用Uniswap V3，你可以通过在当前价格下方或上方放置流动性来获得类似的行为。让我们看看这是如何工作的：</p>
+<p><img src="images/ranges_outside_current_price.png" alt="当前价格外的流动性区间" /></p>
+<p>如果你在当前价格下方提供流动性（即你选择的价格区间完全位于当前价格下方）或上方，那么你的全部流动性将<strong>只由一种资产</strong>组成——这种资产将是两种资产中较便宜的那个。在我们的例子中，我们正在建立一个ETH作为代币<span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span></span>和USDC作为代币<span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span></span></span></span></span>的资金池，我们将价格定义为：</p>
 <p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.7936em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1076em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">x</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">y</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></p>
-<p>If we put liquidity below the current price, then the liquidity will be composed of USDC solely because, where we added the liquidity, the price of USDC is lower than the current price. Likewise, when we put liquidity above the current price, then the liquidity will be composed of ETH because ETH is cheaper in that range.</p>
-<p>Recall this illustration from the introduction:</p>
-<p><img src="../milestone_1/images/range_depleted.png" alt="Price range depletion" /></p>
-<p>If we buy all available amounts of ETH from this range, the range will contain only the other token, USDC, and the price will move to the right of the curve. The price, as we defined it (<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.0925em;vertical-align:-0.345em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.7475em;"><span style="top:-2.655em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">x</span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.4461em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">y</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.345em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span>), will <strong>increase</strong>. If there's a price range to the right of this one, it needs to have ETH liquidity, and only ETH, not USDC: it needs to provide ETH for the next swaps.  If we keep buying and raising the price, we might &quot;drain&quot; the next price range as well, which means buying all its ETH and selling USDC. Again, the price range ends up having only USDC, and the current price moves outside of it.</p>
-<p>Similarly, if we're buying USDC tokens, we move the price to the left and remove USDC tokens from the pool. The next price range will only contain USDC tokens to satisfy our demand, and, similarly to the above scenario, will end up containing only ETH tokens if we buy all USDC from it.</p>
-<p>Note the interesting fact: when crossing an entire price range, its liquidity is swapped from one token to another. And if we set a very narrow price range, one that gets crossed quickly during a price move, we get a limit order! For example, if you want to buy ETH at a lower price, you need to place a price range containing only USDC at the lower price and wait for the current price to cross it. After that, you'll need to remove your liquidity and get it converted to ETH!</p>
-<p>I hope this example didn't confuse you! I think this is a good way to explain the dynamics of price ranges.</p>
-<h2 id="updating-the-mint-function"><a class="header" href="#updating-the-mint-function">Updating the <code>mint</code> Function</a></h2>
-<p>To support all kinds of price ranges, we need to know whether the current price is below, inside, or above the price range specified by the user and calculate token amounts accordingly. If the price range is above the current price, we want the liquidity to be composed of token <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span>:</p>
+<p>如果我们在当前价格下方放置流动性，那么流动性将完全由USDC组成，因为在我们添加流动性的地方，USDC的价格低于当前价格。同样，当我们在当前价格上方放置流动性时，流动性将由ETH组成，因为在那个范围内ETH更便宜。</p>
+<p>回想一下介绍中的这个图示：</p>
+<p><img src="../milestone_1/images/range_depleted.png" alt="价格区间耗尽" /></p>
+<p>如果我们从这个区间买入所有可用的ETH，该区间将只包含另一种代币USDC，价格将移动到曲线的右侧。我们定义的价格（<span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.7936em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1076em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">x</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">y</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span>）将<strong>增加</strong>。如果这个区间右侧有一个价格区间，它需要有ETH流动性，而且只有ETH，没有USDC：它需要为下一次交换提供ETH。如果我们继续买入并提高价格，我们可能也会&quot;耗尽&quot;下一个价格区间，这意味着买入所有的ETH并卖出USDC。同样，价格区间最终只剩下USDC，当前价格移出了这个区间。</p>
+<p>类似地，如果我们买入USDC代币，我们将价格向左移动并从资金池中移除USDC代币。下一个价格区间将只包含USDC代币以满足我们的需求，并且，类似于上述情况，如果我们从中买入所有USDC，它最终将只包含ETH代币。</p>
+<p>注意这个有趣的事实：当跨越整个价格区间时，其流动性从一种代币交换为另一种代币。如果我们设置一个非常窄的价格区间，一个在价格移动过程中快速被跨越的区间，我们就得到了一个限价订单！例如，如果你想以较低的价格买入ETH，你需要在较低的价格放置一个只包含USDC的价格区间，并等待当前价格跨越它。之后，你需要移除你的流动性，并将其转换为ETH！</p>
+<p>我希望这个例子没有让你感到困惑！我认为这是一个很好的方式来解释价格区间的动态。</p>
+<h2 id="更新mint函数"><a class="header" href="#更新mint函数">更新<code>mint</code>函数</a></h2>
+<p>为了支持所有类型的价格区间，我们需要知道当前价格是低于、位于还是高于用户指定的价格区间，并相应地计算代币数量。如果价格区间高于当前价格，我们希望流动性由代币<span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span></span></span></span></span>组成：</p>
 <pre><code class="language-solidity">// src/UniswapV3Pool.sol
 function mint() {
     ...
@@ -235,7 +235,7 @@ function mint() {
         );
     ...
 </code></pre>
-<p>When the price range includes the current price, we want both tokens in amounts proportional to the price (this is the scenario we implemented earlier):</p>
+<p>当价格区间包含当前价格时，我们希望两种代币的数量与价格成比例（这是我们之前实现的场景）：</p>
 <pre><code class="language-solidity">} else if (slot0_.tick &lt; upperTick) {
     amount0 = Math.calcAmount0Delta(
         slot0_.sqrtPriceX96,
@@ -251,8 +251,8 @@ function mint() {
 
     liquidity = LiquidityMath.addLiquidity(liquidity, int128(amount));
 </code></pre>
-<p>Notice that this is the only scenario where we want to update <code>liquidity</code> since the variable tracks liquidity that's available immediately.</p>
-<p>In all other cases, when the price range is below the current price, we want the range to contain only token <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span></span></span></span>:</p>
+<p>注意，这是我们唯一想要更新<code>liquidity</code>的场景，因为该变量跟踪的是立即可用的流动性。</p>
+<p>在所有其他情况下，当价格区间低于当前价格时，我们希望该区间只包含代币<span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span></span></span></span></span>：</p>
 <pre><code class="language-solidity">} else {
     amount1 = Math.calcAmount1Delta(
         TickMath.getSqrtRatioAtTick(lowerTick),
@@ -261,7 +261,7 @@ function mint() {
     );
 }
 </code></pre>
-<p>And that's it!</p>
+<p>就是这样！</p>
 
                     </main>
 

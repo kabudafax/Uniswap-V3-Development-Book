@@ -180,8 +180,8 @@
                 <div id="content" class="content">
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
-<h1 id="user-interface"><a class="header" href="#user-interface">User Interface</a></h1>
-<p>Let's make our web app work more like a real DEX. We can now remove hardcoded swap amounts and let users type arbitrary amounts. Moreover, we can now let users swap in both directions, so we also need a button to swap the token inputs.  After updating, the swap form will look like:</p>
+<h1 id="用户界面"><a class="header" href="#用户界面">用户界面</a></h1>
+<p>让我们使我们的网页应用更像一个真正的去中心化交易所（DEX）。我们现在可以移除硬编码的交换金额，让用户输入任意金额。此外，我们现在可以让用户在两个方向上进行交换，所以我们还需要一个按钮来交换代币输入。更新后，交换表单将看起来像这样：</p>
 <pre><code class="language-jsx">&lt;form className=&quot;SwapForm&quot;&gt;
   &lt;SwapInput
     amount={zeroForOne ? amount0 : amount1}
@@ -198,8 +198,8 @@
   &lt;button className='swap' disabled={!enabled || loading} onClick={swap_}&gt;Swap&lt;/button&gt;
 &lt;/form&gt;
 </code></pre>
-<p>Each input has an amount assigned to it depending on the swap direction controlled by the <code>zeroForOne</code> state variable. The lower input field is always read-only because its value is calculated by the Quoter contract.</p>
-<p>The <code>setAmount_</code> function does two things: it updates the value of the top input and calls the Quoter contract to calculate the value of the lower input:</p>
+<p>每个输入框都有一个与之关联的金额，这取决于由<code>zeroForOne</code>状态变量控制的交换方向。下方的输入框始终是只读的，因为它的值是由Quoter合约计算得出的。</p>
+<p><code>setAmount_</code>函数做两件事：它更新上方输入框的值，并调用Quoter合约来计算下方输入框的值：</p>
 <pre><code class="language-js">const updateAmountOut = debounce((amount) =&gt; {
   if (amount === 0 || amount === &quot;0&quot;) {
     return;
@@ -228,8 +228,8 @@ const setAmount_ = (setAmountFn) =&gt; {
   }
 }
 </code></pre>
-<p>Notice the <code>callStatic</code> called on <code>quoter</code>–this is what we discussed in the previous chapter: we need to force Ethers.js to make a static call. Since <code>quote</code> is not a <code>pure</code> or <code>view</code> function, Ethers.js will try to call <code>quote</code> in a transaction.</p>
-<p>And that's it! The UI now allows us to specify arbitrary amounts and swap in either direction!</p>
+<p>注意在<code>quoter</code>上调用的<code>callStatic</code>——这就是我们在上一章讨论的内容：我们需要强制Ethers.js进行静态调用。由于<code>quote</code>不是<code>pure</code>或<code>view</code>函数，Ethers.js会尝试在交易中调用<code>quote</code>。</p>
+<p>就是这样！用户界面现在允许我们指定任意金额并在任一方向进行交换！</p>
 
                     </main>
 
