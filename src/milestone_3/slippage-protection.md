@@ -1,18 +1,18 @@
-# Slippage Protection
+# 滑点保护
 
-Slippage is a very important issue in decentralized exchanges. Slippage simply means the difference between the price that you see on the screen when initialing a transaction and the actual price when the swap is executed. This difference appears because there's a short (and sometimes long, depending on network congestion and gas costs) delay between when you send a transaction and when it gets mined. In more technical terms, blockchain state changes every block and there's no guarantee that your transaction will be applied at a specific block.
+滑点是去中心化交易所中一个非常重要的问题。滑点简单来说就是你在发起交易时屏幕上看到的价格与实际执行交换时的价格之间的差异。这种差异出现是因为从你发送交易到交易被挖矿之间存在短暂（有时会很长，取决于网络拥堵和gas成本）的延迟。用更专业的术语来说，区块链状态每个区块都在变化，无法保证你的交易会在特定区块被应用。
 
-Another important problem that slippage protection fixes is *sandwich attacks*–this is a common type of attack on decentralized exchange users. During sandwiching, attackers "wrap" your swap transactions in their two transactions: one goes before your transaction and the other goes after it. In the first transaction, an attacker modifies the state of a pool so that your swap becomes very unprofitable for you and somewhat profitable for the attacker. This is achieved by adjusting pool liquidity so that your trade happens at a lower price. In the second transaction, the attacker reestablishes pool liquidity and the price. As a result, you get much fewer tokens than expected due to manipulated prices, and the attacker gets some profit.
+滑点保护解决的另一个重要问题是*三明治攻击*——这是对去中心化交易所用户的一种常见攻击类型。在三明治攻击中，攻击者用他们的两笔交易"包裹"你的交换交易：一笔在你的交易之前，另一笔在之后。在第一笔交易中，攻击者修改池子的状态，使你的交换对你非常不利，而对攻击者略有利。这是通过调整池子流动性来实现的，使你的交易以较低的价格发生。在第二笔交易中，攻击者恢复池子流动性和价格。结果，由于价格被操纵，你获得的代币远少于预期，而攻击者获得一些利润。
 
-![Sandwich attack](images/sandwich_attack.png)
+![三明治攻击](images/sandwich_attack.png)
 
-The way slippage protection is implemented in decentralized exchanges is by letting users choose how far the actual price is allowed to drop. By default, Uniswap V3 sets slippage tolerance to 0.1%, which means a swap is executed only if the price at the moment of execution is not smaller than 99.9% of the price the user saw in the browser. This is a very tight range and users are allowed to adjust this number, which is useful when volatility is high.
+去中心化交易所实现滑点保护的方式是让用户选择实际价格允许下降的幅度。默认情况下，Uniswap V3将滑点容忍度设置为0.1%，这意味着只有当执行时的价格不低于用户在浏览器中看到价格的99.9%时，交换才会执行。这是一个非常紧密的范围，用户可以调整这个数字，这在波动性较高时很有用。
 
-Let's add slippage protection to our implementation!
+让我们在我们的实现中添加滑点保护！
 
-## Slippage Protection in Swaps
+## 交换中的滑点保护
 
-To protect swaps, we need to add one more parameter to the `swap` function–we want to let the user choose a stop price, a price at which swapping will stop. We'll call the parameter `sqrtPriceLimitX96`:
+为了保护交换，我们需要在`swap`函数中添加一个参数——我们想让用户选择一个停止价格，即交换将停止的价格。我们将这个参数称为`sqrtPriceLimitX96`：
 
 ```solidity
 function swap(
@@ -33,9 +33,10 @@ function swap(
     ...
 ```
 
-When selling token $x$ (`zeroForOne` is true), `sqrtPriceLimitX96` must be between the current price and the minimal $\sqrt{P}$ since selling token $x$ moves the price down. Likewise, when selling token $y$, `sqrtPriceLimitX96` must be between the current price and the maximal $\sqrt{P}$ because the price moves up.
+当出售代币$x$（`zeroForOne`为真）时，`sqrtPriceLimitX96`必须在当前价格和最小$\sqrt{P}$之间，因为出售代币$x$会使价格下降。同样，当出售代币$y$时，`sqrtPriceLimitX96`必须在当前价格和最大$\sqrt{P}$之间，因为价格会上升。
 
-In the while loop, we want to satisfy two conditions: the full swap amount has not been filled and the current price isn't equal to `sqrtPriceLimitX96`:
+在while循环中，我们希望满足两个条件：完整的交换金额尚未填满，且当前价格不等于`sqrtPriceLimitX96`：
+
 ```solidity
 ..
 while (
@@ -45,9 +46,9 @@ while (
 ...
 ```
 
-This means that Uniswap V3 pools don't fail when slippage tolerance gets hit and simply execute the swap partially.
+这意味着Uniswap V3池在达到滑点容忍度时不会失败，而是简单地部分执行交换。
 
-Another place where we need to consider `sqrtPriceLimitX96` is when calling `SwapMath.computeSwapStep`:
+我们需要考虑`sqrtPriceLimitX96`的另一个地方是在调用`SwapMath.computeSwapStep`时：
 
 ```solidity
 (state.sqrtPriceX96, step.amountIn, step.amountOut) = SwapMath
@@ -65,15 +66,16 @@ Another place where we need to consider `sqrtPriceLimitX96` is when calling `Swa
     );
 ```
 
-Here, we want to ensure that `computeSwapStep` never calculates swap amounts outside of `sqrtPriceLimitX96`–this guarantees that the current price will never cross the limiting price.
+在这里，我们希望确保`computeSwapStep`永远不会计算超出`sqrtPriceLimitX96`范围的交换金额——这保证了当前价格永远不会越过限制价格。
 
-## Slippage Protection in Minting
+## 添加流动性时的滑点保护
 
-Adding liquidity also requires slippage protection. This comes from the fact that price cannot be changed when adding liquidity (liquidity must be proportional to the current price), thus liquidity providers also suffer from slippage. Unlike the `swap` function, however, we're not forced to implement slippage protection in the Pool contract–recall that the Pool contract is a core contract and we don't want to put unnecessary logic into it. This is why we made the Manager contract, and it's in the Manager contract where we'll implement slippage protection.
+添加流动性也需要滑点保护。这源于添加流动性时不能改变价格（流动性必须与当前价格成比例），因此流动性提供者也会遭受滑点。然而，与`swap`函数不同，我们不必在Pool合约中实现滑点保护——回想一下，Pool合约是一个核心合约，我们不想在其中放入不必要的逻辑。这就是我们创建Manager合约的原因，我们将在Manager合约中实现滑点保护。
 
-The Manager contract is a wrapper contract that makes calls to the Pool contract more convenient. To implement slippage protection in the `mint` function, we can simply check the amounts of tokens taken by Pool and compare them to some minimal amounts chosen the by user. Additionally, we can free users from calculating $\sqrt{P_{lower}}$ and $\sqrt{P_{upper}}$, as well as liquidity, and calculate these in `Manager.mint()`.
+Manager合约是一个包装合约，使对Pool合约的调用更加方便。要在`mint`函数中实现滑点保护，我们可以简单地检查Pool所取的代币数量，并将其与用户选择的一些最小数量进行比较。此外，我们可以让用户不必计算$\sqrt{P_{lower}}$和$\sqrt{P_{upper}}$以及流动性，而是在`Manager.mint()`中计算这些值。
 
-Our updated `mint` function will now take more parameters, so let's group them in a struct:
+我们更新后的`mint`函数现在将接受更多参数，所以让我们将它们分组到一个结构体中：
+
 ```solidity
 // src/UniswapV3Manager.sol
 contract UniswapV3Manager {
@@ -94,9 +96,10 @@ contract UniswapV3Manager {
         ...
 ```
 
-`amount0Min` and `amount1Min` are the amounts that are calculated based on slippage tolerance. They must be smaller than the desired amounts, with the gap controlled by the slippage tolerance setting. The liquidity provider expects to provide amounts not smaller than `amount0Min` and `amount1Min`.
+`amount0Min`和`amount1Min`是基于滑点容忍度计算的数量。它们必须小于期望数量，其间隔由滑点容忍度设置控制。流动性提供者期望提供不小于`amount0Min`和`amount1Min`的数量。
 
-Next, we calculate $\sqrt{P_{lower}}$, $\sqrt{P_{upper}}$, and liquidity:
+接下来，我们计算$\sqrt{P_{lower}}$、$\sqrt{P_{upper}}$和流动性：
+
 ```solidity
 ...
 IUniswapV3Pool pool = IUniswapV3Pool(params.poolAddress);
@@ -119,9 +122,10 @@ uint128 liquidity = LiquidityMath.getLiquidityForAmounts(
 ...
 ```
 
-`LiquidityMath.getLiquidityForAmounts` is a new function, we'll discuss it in the next chapter.
+`LiquidityMath.getLiquidityForAmounts`是一个新函数，我们将在下一章讨论它。
 
-The next step is to provide liquidity to the pool and check the amounts returned by the pool: if they're too low, we revert.
+下一步是向池子提供流动性，并检查池子返回的数量：如果它们太低，我们就回滚。
+
 ```solidity
 (amount0, amount1) = pool.mint(
     msg.sender,
@@ -141,4 +145,4 @@ if (amount0 < params.amount0Min || amount1 < params.amount1Min)
     revert SlippageCheckFailed(amount0, amount1);
 ```
 
-That's it!
+就是这样！

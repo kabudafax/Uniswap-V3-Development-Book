@@ -1,37 +1,38 @@
-# User Interface
+# 用户界面
 
-We're now ready to update the UI with the changes we made in this milestone. We'll add two new features:
-1. Add Liquidity dialog window;
-1. slippage tolerance in swapping.
+我们现在准备好用这个里程碑中所做的更改来更新UI了。我们将添加两个新功能：
 
+1. 添加流动性对话框窗口；
+2. 交换中的滑点容忍度。
 
-## Add Liquidity Dialog
+## 添加流动性对话框
 
-![Add Liquidity dialog window](images/add_liquidity_dialog.png)
+![添加流动性对话框窗口](images/add_liquidity_dialog.png)
 
-This change will finally remove hard-coded liquidity amounts from our code and will allow us to add liquidity at arbitrary ranges.
+这个改变将最终从我们的代码中移除硬编码的流动性数量，并允许我们在任意范围内添加流动性。
 
-The dialog is a simple component with a couple of inputs. We can even re-use the `addLiquidity` function from the previous implementation. However, now we need to convert prices to tick indices in JavaScript: we want users to type in prices but the contracts expect ticks. To make our job easier, we'll use [the official Uniswap V3 SDK](https://github.com/Uniswap/v3-sdk/) for that.
+这个对话框是一个简单的组件，有几个输入框。我们甚至可以重用之前实现中的`addLiquidity`函数。然而，现在我们需要在JavaScript中将价格转换为价格刻度索引：我们希望用户输入价格，但合约需要价格刻度。为了简化我们的工作，我们将使用[官方Uniswap V3 SDK](https://github.com/Uniswap/v3-sdk/)来完成这个任务。
 
-To convert price to $\sqrt{P}$, we can use [encodeSqrtRatioX96](https://github.com/Uniswap/v3-sdk/blob/08a7c050cba00377843497030f502c05982b1c43/src/utils/encodeSqrtRatioX96.ts) function. The function takes two amounts as input and calculates a price by dividing one by the other. Since we only want to convert price to $\sqrt{P}$, we can pass 1 as `amount0`:
+要将价格转换为$$\sqrt{P}$$，我们可以使用[encodeSqrtRatioX96](https://github.com/Uniswap/v3-sdk/blob/08a7c050cba00377843497030f502c05982b1c43/src/utils/encodeSqrtRatioX96.ts)函数。该函数接受两个数量作为输入，并通过将一个除以另一个来计算价格。由于我们只想将价格转换为$$\sqrt{P}$$，我们可以将1作为`amount0`传入：
+
 ```javascript
 const priceToSqrtP = (price) => encodeSqrtRatioX96(price, 1);
 ```
 
-To convert price to tick index, we can use [TickMath.getTickAtSqrtRatio](https://github.com/Uniswap/v3-sdk/blob/08a7c050cba00377843497030f502c05982b1c43/src/utils/tickMath.ts#L82) function. This is an implementation of the Solidity TickMath library in JavaScript:
+要将价格转换为价格刻度索引，我们可以使用[TickMath.getTickAtSqrtRatio](https://github.com/Uniswap/v3-sdk/blob/08a7c050cba00377843497030f502c05982b1c43/src/utils/tickMath.ts#L82)函数。这是Solidity TickMath库在JavaScript中的实现：
 
 ```javascript
 const priceToTick = (price) => TickMath.getTickAtSqrtRatio(priceToSqrtP(price));
 ```
 
-So we can now convert prices typed in by users to ticks:
+所以我们现在可以将用户输入的价格转换为价格刻度：
 
 ```javascript
 const lowerTick = priceToTick(lowerPrice);
 const upperTick = priceToTick(upperPrice);
 ```
 
-Another thing we need to add here is slippage protection. For simplicity, I made it a hard-coded value and set it to 0.5%. Here's how to use slippage tolerance to calculate minimal amounts:
+我们还需要在这里添加滑点保护。为了简单起见，我将其设置为硬编码值，并设定为0.5%。以下是如何使用滑点容忍度来计算最小数量：
 
 ```javascript
 const slippage = 0.5;
@@ -41,13 +42,13 @@ const amount0Min = amount0Desired.mul((100 - slippage) * 100).div(10000);
 const amount1Min = amount1Desired.mul((100 - slippage) * 100).div(10000);
 ```
 
-## Slippage Tolerance in Swapping
+## 交换中的滑点容忍度
 
-Even though we're the only users of the application and thus will never have problems with slippage during development, let's add an input to control slippage tolerance during swaps.
+尽管我们是应用程序的唯一用户，因此在开发过程中永远不会遇到滑点问题，但让我们还是添加一个输入来控制交换过程中的滑点容忍度。
 
-![Main screen of the web app](images/slippage_tolerance.png)
+![Web应用的主屏幕](images/slippage_tolerance.png)
 
-When swapping, slippage protection is implemented via limiting price–a price we don't to go above or below during a swap. This means that we need to know this price before sending a swap transaction. However, we don't need to calculate it on the front end because the Quoter contract does this for us:
+在交换时，滑点保护是通过限制价格来实现的——这是我们在交换过程中不希望超过或低于的价格。这意味着我们需要在发送交换交易之前知道这个价格。然而，我们不需要在前端计算它，因为Quoter合约会为我们做这件事：
 
 ```solidity
 function quote(QuoteParams memory params)
@@ -59,12 +60,9 @@ function quote(QuoteParams memory params)
     ) { ... }
 ```
 
-And we're calling Quoter to calculate swap amounts.
+我们正在调用Quoter来计算交换数量。
 
-So, to calculate the limiting price we need to take `sqrtPriceX96After` and subtract slippage tolerance from it–this will be the price we don't want to go below during a swap.
+因此，为了计算限制价格，我们需要取`sqrtPriceX96After`并从中减去滑点容忍度——这将是我们在交换过程中不希望低于的价格。
 
 ```solidity
 const limitPrice = priceAfter.mul((100 - parseFloat(slippage)) * 100).div(10000);
-```
-
-And that's it!

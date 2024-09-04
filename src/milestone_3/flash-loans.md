@@ -1,14 +1,14 @@
-## Flash Loans
+## 闪电贷
 
-Both Uniswap V2 and V3 implement flash loans: unlimited and uncollateralized loans that must be repaid in the same transaction. Pools give users arbitrary amounts of tokens that they request, but, by the end of the call, the amounts must be repaid, with a small fee on top.
+Uniswap V2和V3都实现了闪电贷：无限制且无抵押的贷款，必须在同一笔交易中偿还。资金池给用户他们请求的任意数量的代币，但在调用结束时，这些数量必须被偿还，并附加一小笔费用。
 
-The fact that flash loans must be repaid in the same transaction means that flash loans cannot be taken by regular users: as a user, you cannot program custom logic in transactions. Flash loans can only be taken and repaid by smart contracts.
+闪电贷必须在同一笔交易中偿还这一事实意味着普通用户无法进行闪电贷：作为用户，你无法在交易中编程自定义逻辑。闪电贷只能由智能合约进行和偿还。
 
-Flash loans are a powerful financial instrument in DeFi. While it's often used to exploit vulnerabilities in DeFi protocols (by inflating pool balances and abusing flawed state management), it's many good applications (e.g. leveraged positions management on lending protocols)–this is why DeFi applications that store liquidity provide permissionless flash loans.
+闪电贷是DeFi中一种强大的金融工具。虽然它经常被用来利用DeFi协议中的漏洞（通过膨胀资金池余额和滥用有缺陷的状态管理），但它也有许多好的应用（例如，在借贷协议上管理杠杆头寸）——这就是为什么存储流动性的DeFi应用程序提供无需许可的闪电贷。
 
-### Implementing Flash Loans
+### 实现闪电贷
 
-In Uniswap V2 flash loans were part of the swapping functionality: it was possible to borrow tokens during a swap, but you had to return them or an equal amount of the other pool token, in the same transaction. In V3, flash loans are separated from swapping–it's simply a function that gives the caller a number of tokens they requested, calls a callback on the caller, and ensures a flash loan was repaid:
+在Uniswap V2中，闪电贷是交换功能的一部分：可以在交换过程中借入代币，但你必须在同一笔交易中归还它们或等量的另一种资金池代币。在V3中，闪电贷与交换分离——它只是一个函数，给调用者他们请求的数量的代币，在调用者上调用回调，并确保闪电贷被偿还：
 
 ```solidity
 function flash(
@@ -31,9 +31,9 @@ function flash(
 }
 ```
 
-The function sends tokens to the caller and then calls `uniswapV3FlashCallback` on it–this is where the caller is expected to repay the loan. Then the function ensures that its balances haven't decreased. Notice that custom data is allowed to be passed to the callback.
+该函数将代币发送给调用者，然后在调用者上调用`uniswapV3FlashCallback`——这是期望调用者偿还贷款的地方。然后，该函数确保其余额没有减少。注意，允许将自定义数据传递给回调。
 
-Here's an example of the callback implementation:
+以下是回调实现的一个例子：
 
 ```solidity
 function uniswapV3FlashCallback(bytes calldata data) public {
@@ -47,6 +47,6 @@ function uniswapV3FlashCallback(bytes calldata data) public {
 }
 ```
 
-In this implementation, we're simply sending tokens back to the pool (I used this callback in `flash` function tests).  In reality, it can use the loaned amounts to perform some operations on other DeFi protocols. But it always must repay the loan in this callback.
+在这个实现中，我们只是简单地将代币发送回资金池（我在`flash`函数测试中使用了这个回调）。在实际情况下，它可以使用借来的金额在其他DeFi协议上执行一些操作。但它总是必须在这个回调中偿还贷款。
 
-And that's it!
+就是这样！

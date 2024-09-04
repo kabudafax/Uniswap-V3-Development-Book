@@ -1,36 +1,39 @@
-# A Little Bit More on Fixed-point Numbers
+# 关于定点数的更多内容
 
-In this bonus chapter, I'd like to show you how to convert prices to ticks in Solidity. We don't need to do this in the main contracts, but it's helpful to have such function in tests so we don't hardcode ticks and could write something like `tick(5000)`–this makes code easier to read because it's more convenient for us to think in prices, not tick indexes.
+在这个额外的章节中，我想向你展示如何在Solidity中将价格转换为价格刻度。我们在主合约中不需要这样做，但在测试中有这样的函数会很有帮助，这样我们就不需要硬编码价格刻度，而可以写类似`tick(5000)`这样的代码——这使得代码更容易阅读，因为对我们来说，用价格思考比用价格刻度索引更方便。
 
-Recall that, to find ticks, we use the `TickMath.getTickAtSqrtRatio` function, which takes $\sqrt{P}$ as its argument, and the $\sqrt{P}$ is a Q64.96 fixed-point number. In smart contract tests, we need to check $\sqrt{P}$ many times in many different test cases: mostly after mints and swaps. Instead of hard-coding actual values, it might be cleaner to use a helper function like `sqrtP(5000)` that converts prices to $\sqrt{P}$.
+回想一下，为了找到价格刻度，我们使用`TickMath.getTickAtSqrtRatio`函数，它以$$\sqrt{P}$$作为参数，而$$\sqrt{P}$$是一个Q64.96定点数。在智能合约测试中，我们需要在许多不同的测试用例中多次检查$$\sqrt{P}$$：主要是在铸造和交换之后。与其硬编码实际值，使用像`sqrtP(5000)`这样的辅助函数将价格转换为$$\sqrt{P}$$可能会更清晰。
 
-So, what's the problem?
+那么，问题是什么？
 
-The problem is that Solidity doesn't natively support the square root operation, which means we need a third-party library. Another problem is that prices are often relatively small numbers, like 10, 5000, 0.01, etc., and we don't want to lose precision when taking square root.
+问题是Solidity原生不支持平方根运算，这意味着我们需要一个第三方库。另一个问题是，价格通常是相对较小的数字，如10、5000、0.01等，我们不希望在取平方根时损失精度。
 
-You probably remember that we used `PRBMath` earlier in the book to implement a multiply-then-divide operation that doesn't overflow during multiplication. If you check the `PRBMath.sol` contract, you'll notice the `sqrt` function. However, the function doesn't support fixed-point numbers, as the function description says. You can give it a try and see that `PRBMath.sqrt(5000)` results in `70`, which is an integer number with lost precision (without the fractional part).
+你可能记得我们在本书前面使用了`PRBMath`来实现一个在乘法过程中不会溢出的乘后除运算。如果你查看`PRBMath.sol`合约，你会注意到`sqrt`函数。然而，正如函数描述所说，该函数不支持定点数。你可以试一试，看看`PRBMath.sqrt(5000)`的结果是`70`，这是一个失去精度的整数（没有小数部分）。
 
-If you check [prb-math](https://github.com/paulrberg/prb-math) repo, you'll see these contracts: `PRBMathSD59x18.sol` and `PRBMathUD60x18.sol`. Aha! These are fixed-point number implementations. Let's pick the latter and see how it goes: `PRBMathUD60x18.sqrt(5000 * PRBMathUD60x18.SCALE)` returns `70710678118654752440`. This looks interesting!  `PRBMathUD60x18` is a library that implements fixed numbers with 18 decimal places in the fractional part. So the number we got is 70.710678118654752440 (use `cast --from-wei 70710678118654752440`).
+如果你查看[prb-math](https://github.com/paulrberg/prb-math)仓库，你会看到这些合约：`PRBMathSD59x18.sol`和`PRBMathUD60x18.sol`。啊哈！这些是定点数实现。让我们选择后者看看效果如何：`PRBMathUD60x18.sqrt(5000 * PRBMathUD60x18.SCALE)`返回`70710678118654752440`。这看起来很有趣！`PRBMathUD60x18`是一个实现了小数部分有18位小数的定点数的库。所以我们得到的数字是70.710678118654752440（使用`cast --from-wei 70710678118654752440`）。
 
-However, we cannot use this number!
+然而，我们不能使用这个数字！
 
-There are fixed-point numbers and fixed-point numbers. The Q64.96 fixed-point number used by Uniswap V3 is a **binary** number–64 and 96 signify *binary places*. But `PRBMathUD60x18` implements a *decimal* fixed-point number (UD in the contract name means "unsigned, decimal"), where 60 and 18 signify *decimal places*. This difference is quite significant.
+定点数和定点数是有区别的。Uniswap V3使用的Q64.96定点数是一个**二进制**数——64和96表示*二进制位*。但`PRBMathUD60x18`实现的是一个*十进制*定点数（合约名称中的UD表示"无符号，十进制"），其中60和18表示*十进制位*。这个差异是相当显著的。
 
-Let's see how to convert an arbitrary number (42) to either of the above fixed-point numbers:
-1. Q64.96: $42 * 2^{96}$ or, using bitwise left shift, `2 << 96`. The result is 3327582825599102178928845914112.
-1. UD60.18: $42 * 10^{18}$. The result is 42000000000000000000.
+让我们看看如何将任意数字（42）转换为上述两种定点数：
 
-Let's now see how to convert numbers with the fractional part (42.1337):
-1. Q64.96: $421337 * 2^{92}$ or `421337 << 92`. The result is 2086359769329537075540689212669952.
-1. UD60.18: $421337 * 10^{14}$. The result is 42133700000000000000.
+1. Q64.96：$$42 * 2^{96}$$或者使用位左移，`2 << 96`。结果是3327582825599102178928845914112。
+2. UD60.18：$$42 * 10^{18}$$。结果是42000000000000000000。
 
-The second variant makes more sense to us because it uses the decimal system, which we learned in our childhood. The first variant uses the binary system and it's much harder for us to read.
+现在让我们看看如何转换带小数部分的数字（42.1337）：
 
-But the biggest problem with different variants is that it's hard to convert between them.
+1. Q64.96：$$421337 * 2^{92}$$或`421337 << 92`。结果是2086359769329537075540689212669952。
+2. UD60.18：$$421337 * 10^{14}$$。结果是42133700000000000000。
 
-This all means that we need a different library, one that implements a binary fixed-point number and a `sqrt` function for it. Luckily, there's such a library: [abdk-libraries-solidity](https://github.com/abdk-consulting/abdk-libraries-solidity).  The library implemented Q64.64, not exactly what we need (not 96 bits in the fractional part) but this is not a problem.
+第二种变体对我们来说更有意义，因为它使用了我们从小学习的十进制系统。第一种变体使用二进制系统，对我们来说更难读懂。
 
-Here's how we can implement the price-to-tick function using the new library:
+但不同变体最大的问题是它们之间很难转换。
+
+这一切意味着我们需要一个不同的库，一个实现二进制定点数并为其提供`sqrt`函数的库。幸运的是，有这样一个库：[abdk-libraries-solidity](https://github.com/abdk-consulting/abdk-libraries-solidity)。这个库实现了Q64.64，不完全是我们需要的（小数部分不是96位），但这不是问题。
+
+以下是我们如何使用新库实现价格到价格刻度的函数：
+
 ```solidity
 function tick(uint256 price) internal pure returns (int24 tick_) {
     tick_ = TickMath.getTickAtSqrtRatio(
@@ -44,4 +47,4 @@ function tick(uint256 price) internal pure returns (int24 tick_) {
 }
 ```
 
-`ABDKMath64x64.sqrt` takes Q64.64 numbers so we need to convert `price` to such number. The price is expected to not have the fractional part, so we're shifting it by 64 bits. The `sqrt` function also returns a Q64.64 number but `TickMath.getTickAtSqrtRatio` takes a Q64.96 number–this is why we need to shift the result of the square root operation by `96 - 64` bits to the left.
+`ABDKMath64x64.sqrt`函数接受Q64.64格式的数字，所以我们需要将`price`转换为这种格式。价格预计不会有小数部分，因此我们将其左移64位。`sqrt`函数也返回一个Q64.64格式的数字，但`TickMath.getTickAtSqrtRatio`函数接受Q64.96格式的数字——这就是为什么我们需要将平方根操作的结果再左移`96 - 64`位的原因。

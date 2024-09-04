@@ -1,6 +1,7 @@
-# Different Price Ranges
+# 不同的价格区间
 
-The way we implemented it, our Pool contract creates only price ranges that include the current price:
+根据我们的实现方式，我们的Pool合约只创建包含当前价格的价格区间：
+
 ```solidity
 // src/UniswapV3Pool.sol
 function mint() {
@@ -22,44 +23,45 @@ function mint() {
 }
 ```
 
-From this piece, you can also see that we always update the liquidity tracker (which tracks only currently available liquidity, i.e. liquidity available at the current price).
+从这段代码中，你也可以看到我们总是更新流动性跟踪器（它只跟踪当前可用的流动性，即当前价格下可用的流动性）。
 
-However, in reality, price ranges can also be created **below or above** the current price. That's it: the design of Uniswap V3 allows liquidity providers to provide liquidity that doesn't get immediately used. Such liquidity gets "injected" when the current price gets into such "sleeping" price ranges.
+然而，在现实中，价格区间也可以在当前价格的**下方或上方**创建。是的：Uniswap V3的设计允许流动性提供者提供不会立即使用的流动性。当当前价格进入这些"休眠"价格区间时，这种流动性会被"注入"。
 
-These are kinds of price ranges that can exist:
-1. Active price range, i.e. one that includes the current price.
-1. Price range placed below the current price. The upper tick of this range is below the current tick.
-1. Price range placed above the current price. The lower tick of this range is above the current tick.
+以下是可能存在的价格区间类型：
 
-## Limit Orders
+1. 活跃价格区间，即包含当前价格的区间。
+2. 位于当前价格下方的价格区间。这个区间的上限价格刻度低于当前价格刻度。
+3. 位于当前价格上方的价格区间。这个区间的下限价格刻度高于当前价格刻度。
 
-An interesting fact about inactive liquidity (i.e. liquidity not provided at the current price) is that it acts as *limit orders*.
+## 限价订单
 
-In trading, limit orders are orders that get executed when the price crosses a level chosen by the trader. For example, you can place a limit order that buys 1 ETH when its price drops to \$1000. Similarly, you can use limit order to sell assets.  With Uniswap V3, you can get similar behavior by placing liquidity at ranges that are below or above the current price. Let's see how this works:
+关于非活跃流动性（即不在当前价格提供的流动性）的一个有趣事实是，它充当了*限价订单*的角色。
 
-![Liquidity ranges outside of the current price](images/ranges_outside_current_price.png)
+在交易中，限价订单是当价格跨越交易者选择的水平时执行的订单。例如，你可以下一个限价订单，当ETH价格下降到1000美元时买入1个ETH。同样，你也可以使用限价订单来卖出资产。使用Uniswap V3，你可以通过在当前价格下方或上方放置流动性来获得类似的行为。让我们看看这是如何工作的：
 
-If you provide liquidity below the current price (i.e. the price range you chose lays entirely below the current price) or above it, then your whole liquidity will be composed of **only one asset**–the asset will be the cheaper one of the two.  In our example, we're building a pool with ETH being token $x$ and USDC being token $y$, and we define the price as:
+![当前价格外的流动性区间](images/ranges_outside_current_price.png)
+
+如果你在当前价格下方提供流动性（即你选择的价格区间完全位于当前价格下方）或上方，那么你的全部流动性将**只由一种资产**组成——这种资产将是两种资产中较便宜的那个。在我们的例子中，我们正在建立一个ETH作为代币$$x$$和USDC作为代币$$y$$的资金池，我们将价格定义为：
 
 $$P = \frac{y}{x}$$
 
-If we put liquidity below the current price, then the liquidity will be composed of USDC solely because, where we added the liquidity, the price of USDC is lower than the current price. Likewise, when we put liquidity above the current price, then the liquidity will be composed of ETH because ETH is cheaper in that range.
+如果我们在当前价格下方放置流动性，那么流动性将完全由USDC组成，因为在我们添加流动性的地方，USDC的价格低于当前价格。同样，当我们在当前价格上方放置流动性时，流动性将由ETH组成，因为在那个范围内ETH更便宜。
 
-Recall this illustration from the introduction:
+回想一下介绍中的这个图示：
 
-![Price range depletion](../milestone_1/images/range_depleted.png)
+![价格区间耗尽](../milestone_1/images/range_depleted.png)
 
-If we buy all available amounts of ETH from this range, the range will contain only the other token, USDC, and the price will move to the right of the curve. The price, as we defined it ($\frac{y}{x}$), will **increase**. If there's a price range to the right of this one, it needs to have ETH liquidity, and only ETH, not USDC: it needs to provide ETH for the next swaps.  If we keep buying and raising the price, we might "drain" the next price range as well, which means buying all its ETH and selling USDC. Again, the price range ends up having only USDC, and the current price moves outside of it.
+如果我们从这个区间买入所有可用的ETH，该区间将只包含另一种代币USDC，价格将移动到曲线的右侧。我们定义的价格（$$\frac{y}{x}$$）将**增加**。如果这个区间右侧有一个价格区间，它需要有ETH流动性，而且只有ETH，没有USDC：它需要为下一次交换提供ETH。如果我们继续买入并提高价格，我们可能也会"耗尽"下一个价格区间，这意味着买入所有的ETH并卖出USDC。同样，价格区间最终只剩下USDC，当前价格移出了这个区间。
 
-Similarly, if we're buying USDC tokens, we move the price to the left and remove USDC tokens from the pool. The next price range will only contain USDC tokens to satisfy our demand, and, similarly to the above scenario, will end up containing only ETH tokens if we buy all USDC from it.
+类似地，如果我们买入USDC代币，我们将价格向左移动并从资金池中移除USDC代币。下一个价格区间将只包含USDC代币以满足我们的需求，并且，类似于上述情况，如果我们从中买入所有USDC，它最终将只包含ETH代币。
 
-Note the interesting fact: when crossing an entire price range, its liquidity is swapped from one token to another. And if we set a very narrow price range, one that gets crossed quickly during a price move, we get a limit order! For example, if you want to buy ETH at a lower price, you need to place a price range containing only USDC at the lower price and wait for the current price to cross it. After that, you'll need to remove your liquidity and get it converted to ETH!
+注意这个有趣的事实：当跨越整个价格区间时，其流动性从一种代币交换为另一种代币。如果我们设置一个非常窄的价格区间，一个在价格移动过程中快速被跨越的区间，我们就得到了一个限价订单！例如，如果你想以较低的价格买入ETH，你需要在较低的价格放置一个只包含USDC的价格区间，并等待当前价格跨越它。之后，你需要移除你的流动性，并将其转换为ETH！
 
-I hope this example didn't confuse you! I think this is a good way to explain the dynamics of price ranges.
+我希望这个例子没有让你感到困惑！我认为这是一个很好的方式来解释价格区间的动态。
 
-## Updating the `mint` Function
+## 更新`mint`函数
 
-To support all kinds of price ranges, we need to know whether the current price is below, inside, or above the price range specified by the user and calculate token amounts accordingly. If the price range is above the current price, we want the liquidity to be composed of token $x$:
+为了支持所有类型的价格区间，我们需要知道当前价格是低于、位于还是高于用户指定的价格区间，并相应地计算代币数量。如果价格区间高于当前价格，我们希望流动性由代币$$x$$组成：
 
 ```solidity
 // src/UniswapV3Pool.sol
@@ -74,7 +76,8 @@ function mint() {
     ...
 ```
 
-When the price range includes the current price, we want both tokens in amounts proportional to the price (this is the scenario we implemented earlier):
+当价格区间包含当前价格时，我们希望两种代币的数量与价格成比例（这是我们之前实现的场景）：
+
 ```solidity
 } else if (slot0_.tick < upperTick) {
     amount0 = Math.calcAmount0Delta(
@@ -92,9 +95,10 @@ When the price range includes the current price, we want both tokens in amounts 
     liquidity = LiquidityMath.addLiquidity(liquidity, int128(amount));
 ```
 
-Notice that this is the only scenario where we want to update `liquidity` since the variable tracks liquidity that's available immediately.
+注意，这是我们唯一想要更新`liquidity`的场景，因为该变量跟踪的是立即可用的流动性。
 
-In all other cases, when the price range is below the current price, we want the range to contain only token $y$:
+在所有其他情况下，当价格区间低于当前价格时，我们希望该区间只包含代币$$y$$：
+
 ```solidity
 } else {
     amount1 = Math.calcAmount1Delta(
@@ -104,5 +108,4 @@ In all other cases, when the price range is below the current price, we want the
     );
 }
 ```
-
-And that's it!
+就是这样！
