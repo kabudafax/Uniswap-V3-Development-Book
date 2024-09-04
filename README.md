@@ -1,7 +1,7 @@
 # Uniswap V3 开发手册
 
 <p align="center">
-<img src="/src/images/cover.png" alt="Uniswap V3 开发书籍封面" width="360"/>
+<img src="./src/images/cover.png" alt="Uniswap V3 开发书籍封面" width="360"/>
 </p>
 
 
