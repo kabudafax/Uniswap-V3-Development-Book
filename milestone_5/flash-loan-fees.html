@@ -180,9 +180,9 @@
                 <div id="content" class="content">
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
-<h1 id="flash-loan-fees"><a class="header" href="#flash-loan-fees">Flash Loan Fees</a></h1>
-<p>In a previous chapter, we implemented flash loans and made them free. However, Uniswap collects swap fees on flash loans, and we're going to add this to our implementation: the amounts repaid by flash loan borrowers must include a fee.</p>
-<p>Here's what the updated <code>flash</code> function looks like:</p>
+<h1 id="闪电贷费用"><a class="header" href="#闪电贷费用">闪电贷费用</a></h1>
+<p>在前一章中，我们实现了闪电贷并使其免费。然而，Uniswap在闪电贷上收取交换费用，我们将把这一点添加到我们的实现中：闪电贷借款人偿还的金额必须包含费用。</p>
+<p>以下是更新后的<code>flash</code>函数的样子：</p>
 <pre><code class="language-solidity">function flash(
     uint256 amount0,
     uint256 amount1,
@@ -211,7 +211,7 @@
     emit Flash(msg.sender, amount0, amount1);
 }
 </code></pre>
-<p>What's changed is that we're now calculating fees on the amounts requested by the caller and then expect pool balances to have grown by the fee amounts.</p>
+<p>变化的是，我们现在对调用者请求的金额计算费用，然后期望池子余额增加相应的费用金额。</p>
 
                     </main>
 

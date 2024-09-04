@@ -3694,34 +3694,42 @@ const amount1Min = amount1Desired.mul((100 - slippage) * 100).div(10000);
 <p>如果你有任何问题，欢迎在<a href="https://github.com/Jeiwan/uniswapv3-book/discussions/categories/milestone-4-multi-pool-swaps">本里程碑的 GitHub 讨论区</a>中提出！</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
-<h1 id="factory-contract"><a class="header" href="#factory-contract">Factory Contract</a></h1>
-<p>Uniswap is designed in a way that assumes many discrete Pool contracts, with each pool handling swaps of one token pair.  This looks problematic when we want to swap between two tokens that don't have a pool–if there's no pool, no swaps are possible. However, we can still do intermediate swaps: first swap to a token that has pairs with either of the tokens and then swap this token to the target token. This can also go deeper and have more intermediate tokens. However, doing this manually is cumbersome, and, luckily, we can make the process easier by implementing it in our smart contracts.</p>
-<p>The Factory contract is a contract that serves multiple purposes:</p>
+<h1 id="factory合约"><a class="header" href="#factory合约">Factory合约</a></h1>
+<p>Uniswap的设计假设存在多个独立的Pool合约，每个池子处理一对代币的交换。当我们想要交换两个没有池子的代币时，这看起来是个问题——如果没有池子，就无法进行交换。然而，我们仍然可以进行中间交换：首先交换到一个与两个代币中任一个有配对的代币，然后将这个代币交换到目标代币。这个过程可以更深入，涉及更多的中间代币。不过，手动执行这个过程很麻烦，幸运的是，我们可以通过在智能合约中实现这个过程来简化它。</p>
+<p>Factory合约是一个服务于多个目的的合约：</p>
 <ol>
-<li>It acts as a centralized registry of Pool contracts. Using a factory, you can find all deployed pools, their tokens, and addresses.</li>
-<li>It simplifies the deployment of Pool contracts. EVM allows deployment of smart contracts from smart contracts–Factory uses this feature to make pool deployment a breeze.</li>
-<li>It makes pool addresses predictable and allows to compute them without making calls to the registry. This makes
-pools easily discoverable.</li>
+<li>
+<p>它作为Pool合约的中央注册表。使用Factory，你可以找到所有已部署的池子、它们的代币和地址。</p>
+</li>
+<li>
+<p>它简化了Pool合约的部署。EVM允许从智能合约部署智能合约——Factory使用这个特性使池子部署变得轻而易举。</p>
+</li>
+<li>
+<p>它使池子地址可预测，并允许在不调用注册表的情况下计算它们。这使得池子易于发现。</p>
+</li>
 </ol>
-<p>Let's build the Factory contract! But before doing this, we need to learn something new.</p>
-<h2 id="the-create-and-create2-opcodes"><a class="header" href="#the-create-and-create2-opcodes">The <code>CREATE</code> and <code>CREATE2</code> Opcodes</a></h2>
-<p>EVM has two ways of deploying contracts: via <code>CREATE</code> or via <code>CREATE2</code> opcode. The only difference between them is how new contract address is generated:</p>
+<p>让我们来构建Factory合约！但在此之前，我们需要学习一些新东西。</p>
+<h2 id="create和create2操作码"><a class="header" href="#create和create2操作码"><code>CREATE</code>和<code>CREATE2</code>操作码</a></h2>
+<p>EVM有两种部署合约的方式：通过<code>CREATE</code>或通过<code>CREATE2</code>操作码。它们之间的唯一区别是新合约地址的生成方式：</p>
 <ol>
-<li><code>CREATE</code> uses the deployer's account <code>nonce</code> to generate a contract address (in pseudocode):
+<li>
+<p><code>CREATE</code>使用部署者账户的<code>nonce</code>来生成合约地址（伪代码）：</p>
 <pre><code>KECCAK256(deployer.address, deployer.nonce)
 </code></pre>
-<code>nonce</code> is an account-specific counter of transactions. Using <code>nonce</code> in new contract address generation makes it hard to compute an address in other contracts or off-chain apps, mainly because, to find the nonce a contract was deployed at, one needs to scan historical account transactions.</li>
-<li><code>CREATE2</code> uses a custom <em>salt</em> to generate a contract address. This is just an arbitrary sequence of bytes chosen by a developer, which is used to make address generation deterministic (and reduces the chance of a collision).
+<p><code>nonce</code>是一个账户特定的交易计数器。在新合约地址生成中使用<code>nonce</code>使得在其他合约或链下应用中计算地址变得困难，主要是因为要找到合约部署时的nonce，需要扫描历史账户交易。</p>
+</li>
+<li>
+<p><code>CREATE2</code>使用自定义的<em>salt</em>来生成合约地址。这只是开发者选择的任意字节序列，用于使地址生成具有确定性（并减少冲突的机会）。</p>
 <pre><code>KECCAK256(deployer.address, salt, contractCodeHash)
 </code></pre>
 </li>
 </ol>
-<p>We need to know the difference because Factory uses <code>CREATE2</code> when deploying Pool contracts so pools get unique and deterministic addresses that can be computed in other contracts and off-chain apps. Specifically, for salt, Factory computes a hash using these pool parameters:</p>
+<p>我们需要知道这个区别，因为Factory在部署Pool合约时使用<code>CREATE2</code>，这样池子就能获得唯一且确定性的地址，可以在其他合约和链下应用中计算。具体来说，对于salt，Factory使用这些池子参数计算哈希：</p>
 <pre><code class="language-solidity">keccak256(abi.encodePacked(token0, token1, tickSpacing))
 </code></pre>
-<p><code>token0</code> and <code>token1</code> are the addresses of pool tokens, and <code>tickSpacing</code> is something we're going to learn about next.</p>
-<h2 id="tick-spacing"><a class="header" href="#tick-spacing">Tick Spacing</a></h2>
-<p>Recall the loop in the <code>swap</code> function:</p>
+<p>token0和token1是池子代币的地址，而tickSpacing是我们接下来要学习的内容。</p>
+<h2 id="tick间距"><a class="header" href="#tick间距">Tick间距</a></h2>
+<p>回想一下swap函数中的循环：</p>
 <pre><code class="language-solidity">while (
     state.amountSpecifiedRemaining &gt; 0 &amp;&amp;
     state.sqrtPriceX96 != sqrtPriceLimitX96
@@ -3732,24 +3740,24 @@ pools easily discoverable.</li>
     ...
 }
 </code></pre>
-<p>This loop finds initialized ticks that have some liquidity by iterating them in either of the directions. This iterating, however, is an expensive operation: if a tick is far away, the code would need to pass all the ticks between the current and the target one, which consumes gas. To make this loop more gas-efficient, Uniswap pools have the <code>tickSpacing</code> setting, which sets, as the name suggests, the distance between ticks: the wider the distance, the more gas-efficient swaps are.</p>
-<p>However, the wider the tick spacing the lower the precision. Low volatility pairs (e.g. stablecoin pairs) need higher precision because price movements are narrow in such pairs. Medium and high volatility pairs need lower precision since price movements are wide in such pairs. To handle this diversity, Uniswap allows to pick a tick spacing when a pair is deployed. Uniswap allows deployers to choose from these options: 10, 60, or 200. And we'll have only 10 and 60 for simplicity.</p>
-<p>In technical terms, tick indexes can only be multiples of <code>tickSpacing</code>: if <code>tickSpacing</code> is 10, only multiples of 10 will be valid as tick indexes (10, 20, 5000, 5010, but not 8, 12, 5001, etc.). However, and this is important, this doesn't apply to the current price–it can still be any tick because we want it to be as precise as possible. <code>tickSpacing</code> is only applied to price ranges.</p>
-<p>Thus, each pool is uniquely identified by this set of parameters:</p>
+<p>这个循环通过向任一方向迭代来找到具有一些流动性的已初始化的刻度。然而，这种迭代是一个昂贵的操作：如果一个刻度距离很远，代码需要经过当前刻度和目标刻度之间的所有刻度，这会消耗gas。为了使这个循环更加gas高效，Uniswap池子有<code>tickSpacing</code>设置，它设置了刻度之间的距离：距离越宽，交换的gas效率就越高。</p>
+<p>然而，刻度间距越宽，精度就越低。低波动性对（例如稳定币对）需要更高的精度，因为这类对中的价格变动较小。中等和高波动性对需要较低的精度，因为这类对中的价格变动较大。为了处理这种多样性，Uniswap允许在部署对时选择刻度间距。Uniswap允许部署者从以下选项中选择：10、60或200。为了简单起见，我们只使用10和60。</p>
+<p>从技术角度来说，刻度索引只能是<code>tickSpacing</code>的倍数：如果<code>tickSpacing</code>是10，那么只有10的倍数才能作为有效的刻度索引（10、20、5000、5010，但不能是8、12、5001等）。然而，这一点很重要，这并不适用于当前价格——它仍然可以是任何刻度，因为我们希望它尽可能精确。<code>tickSpacing</code>只应用于价格范围。</p>
+<p>因此，每个池子都由这组参数唯一标识：</p>
 <ol>
-<li><code>token0</code>,</li>
-<li><code>token1</code>,</li>
-<li><code>tickSpacing</code>;</li>
+<li><code>token0</code>，</li>
+<li><code>token1</code>，</li>
+<li><code>tickSpacing</code>；</li>
 </ol>
 <blockquote>
-<p>And, yes, there can be pools with the same tokens but different tick spacings.</p>
+<p>是的，可以存在具有相同代币但不同刻度间距的池子。</p>
 </blockquote>
-<p>The Factory contract uses this set of parameters as a unique identifier of a pool and passes it as a salt to generate a new pool contract address.</p>
+<p>Factory合约使用这组参数作为池子的唯一标识符，并将其作为salt来生成新的池子合约地址。</p>
 <blockquote>
-<p>From now on, we'll assume the tick spacing of 60 for all our pools, and we'll use 10 for stablecoin pairs. Please notice that only ticks divisible by these values can be flagged as initialized in the ticks bitmap. For example, only ticks -120, -60, 0, 60, 120, etc. can be initialized and used in liquidity ranges when tick spacing is 60.</p>
+<p>从现在开始，我们将假设所有池子的刻度间距为60，对于稳定币对我们将使用10。请注意，只有能被这些值整除的刻度才能在刻度位图中被标记为已初始化。例如，当刻度间距为60时，只有-120、-60、0、60、120等刻度可以被初始化并用于流动性范围。</p>
 </blockquote>
-<h2 id="factory-implementation"><a class="header" href="#factory-implementation">Factory Implementation</a></h2>
-<p>In the constructor of Factory, we need to initialize supported tick spacings:</p>
+<h2 id="factory实现"><a class="header" href="#factory实现">Factory实现</a></h2>
+<p>在Factory的构造函数中，我们需要初始化支持的刻度间距：</p>
 <pre><code class="language-solidity">// src/UniswapV3Factory.sol
 contract UniswapV3Factory is IUniswapV3PoolDeployer {
     mapping(uint24 =&gt; bool) public tickSpacings;
@@ -3761,9 +3769,9 @@ contract UniswapV3Factory is IUniswapV3PoolDeployer {
     ...
 </code></pre>
 <blockquote>
-<p>We could've made them constants, but we'll need to have it as a mapping for a later milestone (tick spacings will have different swap fee amounts).</p>
+<p>我们本可以将它们设为常量，但为了后面的里程碑（不同的刻度间距将有不同的交换费用金额），我们需要将其作为映射。</p>
 </blockquote>
-<p>The Factory contract is a contract with only one function <code>createPool</code>. The function begins with the necessary checks we need to make before creating a pool:</p>
+<p>Factory合约是一个只有一个函数<code>createPool</code>的合约。该函数以我们在创建池子之前需要进行的必要检查开始：</p>
 <pre><code class="language-solidity">// src/UniswapV3Factory.sol
 contract UniswapV3Factory is IUniswapV3PoolDeployer {
     PoolParameters public parameters;
@@ -3790,16 +3798,16 @@ contract UniswapV3Factory is IUniswapV3PoolDeployer {
         
         ...
 </code></pre>
-<p>Notice that this is the first time when we're sorting tokens:</p>
+<p>注意，这是我们第一次对代币进行排序：</p>
 <pre><code class="language-solidity">(tokenX, tokenY) = tokenX &lt; tokenY
     ? (tokenX, tokenY)
     : (tokenY, tokenX);
 </code></pre>
-<p>From now on, we'll also expect pool token addresses to be sorted, i.e. <code>token0</code> goes before <code>token1</code> when sorted. We'll enforce this to make salt (and pool addresses) computation consistent.</p>
+<p>从现在开始，我们也会期望池子代币地址是经过排序的，即当排序时，<code>token0</code>在<code>token1</code>之前。我们强制执行这一点是为了使salt（和池子地址）的计算保持一致。</p>
 <blockquote>
-<p>This change also affects how we deploy tokens in tests and the deployment script: we need to ensure that WETH is always <code>token0</code> to make price calculations simpler in Solidity (otherwise, we'd need to use fractional prices, like 1/5000). If WETH is not <code>token0</code> in your tests, change the order of token deployments.</p>
+<p>这个变化也影响了我们在测试和部署脚本中部署代币的方式：我们需要确保WETH始终是<code>token0</code>，以使Solidity中的价格计算更简单（否则，我们就需要使用分数价格，比如1/5000）。如果在你的测试中WETH不是<code>token0</code>，请更改代币部署的顺序。</p>
 </blockquote>
-<p>After that, we prepare pool parameters and deploy a pool:</p>
+<p>之后，我们准备池子参数并部署一个池子：</p>
 <pre><code class="language-solidity">parameters = PoolParameters({
     factory: address(this),
     token0: tokenX,
@@ -3815,7 +3823,7 @@ pool = address(
 
 delete parameters;
 </code></pre>
-<p>This piece looks weird because <code>parameters</code> is not used. Uniswap uses <a href="https://en.wikipedia.org/wiki/Inversion_of_control">Inversion of Control</a> to pass parameters to a pool during deployment. Let's look at the updated Pool contract constructor:</p>
+<p>这段代码看起来很奇怪，因为<code>parameters</code>没有被使用。Uniswap使用<a href="https://en.wikipedia.org/wiki/Inversion_of_control">控制反转</a>在部署期间将参数传递给池子。让我们看看更新后的Pool合约构造函数：</p>
 <pre><code class="language-solidity">// src/UniswapV3Pool.sol
 contract UniswapV3Pool is IUniswapV3Pool {
     ...
@@ -3827,22 +3835,30 @@ contract UniswapV3Pool is IUniswapV3Pool {
     ..
 }
 </code></pre>
-<p>Aha! Pool expects its deployer to implement the <code>IUniswapV3PoolDeployer</code> interface (which only defines the <code>parameters()</code> getter) and calls it in the constructor during deployment to get the parameters. This is what the flow looks like:</p>
+<p>啊哈！Pool期望其部署者实现<code>IUniswapV3PoolDeployer</code>接口（该接口只定义了<code>parameters()</code>getter），并在部署期间的构造函数中调用它来获取参数。这个流程看起来是这样的：</p>
 <ol>
-<li><code>Factory</code>: defines <code>parameters</code> state variable (implements <code>IUniswapV3PoolDeployer</code>) and sets it before deploying a pool.</li>
-<li><code>Factory</code>: deploys a pool.</li>
-<li><code>Pool</code>: in the constructor, calls the <code>parameters()</code> function on its deployer and expects that pool parameters are returned.</li>
-<li><code>Factory</code>: calls <code>delete parameters;</code> to clean up the slot of the <code>parameters</code> state variable and to reduce gas consumption. This is a temporary state variable that has a value only during a call to <code>createPool()</code>.</li>
+<li>
+<p><code>Factory</code>：定义<code>parameters</code>状态变量（实现<code>IUniswapV3PoolDeployer</code>）并在部署池子之前设置它。</p>
+</li>
+<li>
+<p><code>Factory</code>：部署一个池子。</p>
+</li>
+<li>
+<p><code>Pool</code>：在构造函数中，调用其部署者的<code>parameters()</code>函数，并期望返回池子参数。</p>
+</li>
+<li>
+<p><code>Factory</code>：调用<code>delete parameters;</code>来清理<code>parameters</code>状态变量的槽位并减少gas消耗。这是一个临时状态变量，只在调用<code>createPool()</code>期间有值。</p>
+</li>
 </ol>
-<p>After a pool is created, we keep it in the <code>pools</code> mapping (so it can be found by its tokens) and emit an event:</p>
+<p>在创建池子后，我们将其保存在<code>pools</code>映射中（这样可以通过其代币找到它）并发出一个事件：</p>
 <pre><code class="language-solidity">    pools[tokenX][tokenY][tickSpacing] = pool;
     pools[tokenY][tokenX][tickSpacing] = pool;
 
     emit PoolCreated(tokenX, tokenY, tickSpacing, pool);
 }
 </code></pre>
-<h2 id="pool-initialization"><a class="header" href="#pool-initialization">Pool Initialization</a></h2>
-<p>As you have noticed from the code above, we no longer set <code>sqrtPriceX96</code> and <code>tick</code> in Pool's constructor–this is now done in a separate function, <code>initialize</code>, that needs to be called after the pool is deployed:</p>
+<h2 id="池子初始化"><a class="header" href="#池子初始化">池子初始化</a></h2>
+<p>正如你从上面的代码中注意到的，我们不再在Pool的构造函数中设置<code>sqrtPriceX96</code>和<code>tick</code>——这现在在一个单独的函数<code>initialize</code>中完成，需要在池子部署后调用：</p>
 <pre><code class="language-solidity">// src/UniswapV3Pool.sol
 function initialize(uint160 sqrtPriceX96) public {
     if (slot0.sqrtPriceX96 != 0) revert AlreadyInitialized();
@@ -3852,13 +3868,13 @@ function initialize(uint160 sqrtPriceX96) public {
     slot0 = Slot0({sqrtPriceX96: sqrtPriceX96, tick: tick});
 }
 </code></pre>
-<p>So this is how we deploy pools now:</p>
+<p>所以这就是我们现在部署池子的方式：</p>
 <pre><code class="language-solidity">UniswapV3Factory factory = new UniswapV3Factory();
 UniswapV3Pool pool = UniswapV3Pool(factory.createPool(token0, token1, tickSpacing));
 pool.initialize(sqrtP(currentPrice));
 </code></pre>
-<h2 id="the-pooladdress-library"><a class="header" href="#the-pooladdress-library">The <code>PoolAddress</code> Library</a></h2>
-<p>Let's now implement a library that will help us calculate pool contract addresses from other contracts. This library will have only one function, <code>computeAddress</code>:</p>
+<h2 id="pooladdress库"><a class="header" href="#pooladdress库"><code>PoolAddress</code>库</a></h2>
+<p>现在让我们实现一个库，它将帮助我们从其他合约计算池子合约地址。这个库只有一个函数，<code>computeAddress</code>：</p>
 <pre><code class="language-solidity">// src/lib/PoolAddress.sol
 library PoolAddress {
     function computeAddress(
@@ -3870,8 +3886,8 @@ library PoolAddress {
         require(token0 &lt; token1);
         ...
 </code></pre>
-<p>The function needs to know pool parameters (they're used to build a salt) and the Factory contract address. It expects the tokens to be sorted, which we discussed above.</p>
-<p>Now, the core of the function:</p>
+<p>该函数需要知道池子参数（它们用于构建salt）和Factory合约地址。它期望代币是已排序的，我们之前讨论过这一点。</p>
+<p>现在，函数的核心部分：</p>
 <pre><code class="language-solidity">pool = address(
     uint160(
         uint256(
@@ -3889,60 +3905,71 @@ library PoolAddress {
     )
 );
 </code></pre>
-<p>This is what <code>CREATE2</code> does under the hood to calculate the new contract address. Let's unwind it:</p>
+<p>这就是<code>CREATE2</code>在底层计算新合约地址时所做的。让我们来解析一下：</p>
 <ol>
-<li>first, we calculate salt (<code>abi.encodePacked(token0, token1, tickSpacing)</code>) and hash it;</li>
-<li>then, we obtain the Pool contract code (<code>type(UniswapV3Pool).creationCode</code>) and also hash it;</li>
-<li>then, we build a sequence of bytes that includes: <code>0xff</code>, the Factory contract address, hashed salt, and hashed Pool contract code;</li>
-<li>we then hash the sequence and convert it to an address.</li>
+<li>首先，我们计算salt（<code>abi.encodePacked(token0, token1, tickSpacing)</code>）并对其进行哈希；</li>
+<li>然后，我们获取Pool合约代码（<code>type(UniswapV3Pool).creationCode</code>）并也对其进行哈希；</li>
+<li>接着，我们构建一个字节序列，包括：<code>0xff</code>、Factory合约地址、哈希后的salt和哈希后的Pool合约代码；</li>
+<li>最后，我们对这个序列进行哈希并将其转换为地址。</li>
 </ol>
-<p>These steps implement contract address generation as it's defined in <a href="https://eips.ethereum.org/EIPS/eip-1014">EIP-1014</a>, which is the EIP that added the <code>CREATE2</code> opcode. Let's look closer at the values that constitute the hashed byte sequence:</p>
+<p>这些步骤实现了合约地址生成，正如<a href="https://eips.ethereum.org/EIPS/eip-1014">EIP-1014</a>中定义的那样，这个EIP添加了<code>CREATE2</code>操作码。让我们更仔细地看看构成哈希字节序列的值：</p>
 <ol>
-<li><code>0xff</code>, as defined in the EIP, is used to distinguish addresses generated by <code>CREATE</code> and <code>CREATE2</code>;</li>
-<li><code>factory</code> is the address of the deployer, in our case the Factory contract;</li>
-<li>salt was discussed earlier–it uniquely identifies a pool;</li>
-<li>hashed contract code is needed to protect from collisions: different contracts can have the same salt, but their code
-hash will be different.</li>
+<li><code>0xff</code>，如EIP中定义的，用于区分由<code>CREATE</code>和<code>CREATE2</code>生成的地址；</li>
+<li><code>factory</code>是部署者的地址，在我们的情况下是Factory合约；</li>
+<li>salt之前已经讨论过——它唯一标识一个池子；</li>
+<li>哈希后的合约代码是为了防止冲突：不同的合约可能有相同的salt，但它们的代码哈希会不同。</li>
 </ol>
-<p>So, according to this scheme, a contract address is a hash of the values that uniquely identify this contract, including its deployer, code, and unique parameters. We can use this function from anywhere to find a pool address without making any external calls and without querying the factory.</p>
-<h2 id="simplified-interfaces-of-manager-and-quoter"><a class="header" href="#simplified-interfaces-of-manager-and-quoter">Simplified Interfaces of Manager and Quoter</a></h2>
-<p>In Manager and Quoter contracts, we no longer need to ask users for pool addresses! This makes interaction with the contracts easier because users don't need to know pool addresses, they only need to know tokens. However, users also need to specify tick spacing because it's included in the pool's salt.</p>
-<p>Moreover, we no longer need to ask users for the <code>zeroForOne</code> flag because we can now always figure it out thanks to tokens sorting. <code>zeroForOne</code> is true when &quot;from token&quot; is less than &quot;to token&quot;, since the pool's <code>token0</code> is always less than <code>token1</code>. Likewise, <code>zeroForOne</code> is always false when &quot;from token&quot; is greater than &quot;to token&quot;.</p>
+<p>因此，根据这个方案，合约地址是唯一标识这个合约的值的哈希，包括其部署者、代码和唯一参数。我们可以从任何地方使用这个函数来找到池子地址，而无需进行任何外部调用，也无需查询工厂。</p>
+<h2 id="manager和quoter的简化接口"><a class="header" href="#manager和quoter的简化接口">Manager和Quoter的简化接口</a></h2>
+<p>在Manager和Quoter合约中，我们不再需要向用户询问池子地址！这使得与合约的交互更加容易，因为用户不需要知道池子地址，他们只需要知道代币。然而，用户还需要指定刻度间距，因为它包含在池子的salt中。</p>
+<p>此外，我们不再需要向用户询问<code>zeroForOne</code>标志，因为现在我们可以通过代币排序来确定它。当&quot;from token&quot;小于&quot;to token&quot;时，<code>zeroForOne</code>为真，因为池子的<code>token0</code>总是小于<code>token1</code>。同样，当&quot;from token&quot;大于&quot;to token&quot;时，<code>zeroForOne</code>总是假。</p>
 <blockquote>
-<p>Addresses are hashes, and hashes are numbers, so we can say &quot;less than&quot; or &quot;greater than&quot; when comparing addresses.</p>
+<p>地址是哈希，而哈希是数字，所以我们可以在比较地址时说&quot;小于&quot;或&quot;大于&quot;。</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
-<h1 id="swap-path"><a class="header" href="#swap-path">Swap Path</a></h1>
-<p>Let's imagine that we have only these pools: WETH/USDC, USDC/USDT, and WBTC/USDT. If we want to swap WETH for WBTC, we'll need to make multiple swaps (WETH→USDC→USDT→WBTC) since there's no WETH/WBTC pool. We can do this manually or we can improve our contracts to handle such chained, or multi-pool, swaps. Of course, we'll do the latter!</p>
-<p>When doing multi-pool swaps, we send the output of the previous swap to the input of the next one. For example:</p>
+<h1 id="交换路径"><a class="header" href="#交换路径">交换路径</a></h1>
+<p>让我们想象一下，我们只有这些池：WETH/USDC、USDC/USDT和WBTC/USDT。如果我们想将WETH换成WBTC，我们需要进行多次交换（WETH→USDC→USDT→WBTC），因为没有WETH/WBTC池。我们可以手动完成这个过程，或者我们可以改进我们的合约来处理这种链式或多池交换。当然，我们会选择后者！</p>
+<p>在进行多池交换时，我们将前一次交换的输出发送到下一次交换的输入。例如：</p>
 <ol>
-<li>in the WETH/USDC pool, we're selling WETH and buying USDC;</li>
-<li>in the USDC/USDT pool, we're selling USDC from the previous swap and buying USDT;</li>
-<li>in the WBTC/USDT pool, we're selling USDT from the previous pool and buying WBTC.</li>
+<li>
+<p>在WETH/USDC池中，我们卖出WETH并买入USDC；</p>
+</li>
+<li>
+<p>在USDC/USDT池中，我们卖出上一次交换得到的USDC并买入USDT；</p>
+</li>
+<li>
+<p>在WBTC/USDT池中，我们卖出上一个池中得到的USDT并买入WBTC。</p>
+</li>
 </ol>
-<p>We can turn this series into a path:</p>
+<p>我们可以将这个系列转化为一个路径：</p>
 <pre><code>WETH/USDC,USDC/USDT,WBTC/USDT
 </code></pre>
-<p>And iterate over such a path in our contracts to perform multiple swaps in one transaction. However, recall from the previous chapter that we don't need to know pool addresses and, instead, we can derive them from pool parameters. Thus, the above path can be turned into a series of tokens:</p>
+<p>并在我们的合约中遍历这样的路径，以在一个交易中执行多次交换。然而，回想一下上一章，我们不需要知道池地址，相反，我们可以从池参数中推导出它们。因此，上述路径可以转化为一系列代币：</p>
 <pre><code>WETH, USDC, USDT, WBTC
 </code></pre>
-<p>Recall that tick spacing is another parameter (besides tokens) that identifies a pool. Thus, the above path becomes:</p>
+<p>回想一下，tick间距是另一个识别池的参数（除了代币之外）。因此，上述路径变为：</p>
 <pre><code>WETH, 60, USDC, 10, USDT, 60, WBTC
 </code></pre>
-<p>Where 60 and 10 are tick spacings. We're using 60 in volatile pairs (e.g. ETH/USDC, WBTC/USDT) and 10 in stablecoin pairs (USDC/USDT).</p>
-<p>Now, having such a path, we can iterate over it to build pool parameters for each of the pools:</p>
+<p>其中60和10是tick间距。我们在波动较大的交易对（如ETH/USDC、WBTC/USDT）中使用60，在稳定币交易对（USDC/USDT）中使用10。</p>
+<p>现在，有了这样的路径，我们可以遍历它来为每个池构建池参数：</p>
 <ol>
-<li><code>WETH, 60, USDC</code>;</li>
-<li><code>USDC, 10, USDT</code>;</li>
-<li><code>USDT, 60, WBTC</code>.</li>
+<li>
+<p><code>WETH, 60, USDC</code>；</p>
+</li>
+<li>
+<p><code>USDC, 10, USDT</code>；</p>
+</li>
+<li>
+<p><code>USDT, 60, WBTC</code>。</p>
+</li>
 </ol>
-<p>Knowing these parameters, we can derive pool addresses using <code>PoolAddress.computeAddress</code>, which we implemented in the previous chapter.</p>
+<p>知道这些参数后，我们可以使用<code>PoolAddress.computeAddress</code>（我们在上一章中实现的）来推导出池地址。</p>
 <blockquote>
-<p>We also can use this concept when doing swaps within one pool: the path would simply contain the parameters of one pool. And, thus, we can use swap paths in all swaps, universally.</p>
+<p>我们也可以在单个池内进行交换时使用这个概念：路径将只包含一个池的参数。因此，我们可以在所有交换中普遍使用交换路径。</p>
 </blockquote>
-<p>Let's build a library to work with swap paths.</p>
-<h2 id="path-library"><a class="header" href="#path-library">Path Library</a></h2>
-<p>In code, a swap path is a sequence of bytes. In Solidity, a path can be built like this:</p>
+<p>让我们构建一个库来处理交换路径。</p>
+<h2 id="path库"><a class="header" href="#path库">Path库</a></h2>
+<p>在代码中，交换路径是一个字节序列。在Solidity中，可以这样构建路径：</p>
 <pre><code class="language-solidity">bytes.concat(
     bytes20(address(weth)),
     bytes3(uint24(60)),
@@ -3953,7 +3980,7 @@ hash will be different.</li>
     bytes20(address(wbtc))
 );
 </code></pre>
-<p>It looks like this:</p>
+<p>它看起来像这样：</p>
 <pre><code class="language-shell">0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 # weth address
   00003c                                   # 60
   A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 # usdc address
@@ -3962,16 +3989,26 @@ hash will be different.</li>
   00003c                                   # 60
   2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599 # wbtc address
 </code></pre>
-<p>These are the functions that we'll need to implement:</p>
+<p>这些是我们需要实现的函数：</p>
 <ol>
-<li>calculating the number of pools in a path;</li>
-<li>figuring out if a path has multiple pools;</li>
-<li>extracting first pool parameters from a path;</li>
-<li>proceeding to the next pair in a path;</li>
-<li>and decoding first pool parameters.</li>
+<li>
+<p>计算路径中的池数量；</p>
+</li>
+<li>
+<p>确定路径是否有多个池；</p>
+</li>
+<li>
+<p>从路径中提取第一个池的参数；</p>
+</li>
+<li>
+<p>在路径中进行到下一对；</p>
+</li>
+<li>
+<p>解码第一个池的参数。</p>
+</li>
 </ol>
-<h3 id="calculating-the-number-of-pools-in-a-path"><a class="header" href="#calculating-the-number-of-pools-in-a-path">Calculating the Number of Pools in a Path</a></h3>
-<p>Let's begin with calculating the number of pools in a path:</p>
+<h3 id="计算路径中的池数量"><a class="header" href="#计算路径中的池数量">计算路径中的池数量</a></h3>
+<p>让我们从计算路径中的池数量开始：</p>
 <pre><code class="language-solidity">// src/lib/Path.sol
 library Path {
     /// @dev The length the bytes encoded address
@@ -3989,34 +4026,44 @@ library Path {
 
     ...
 </code></pre>
-<p>We first define a few constants:</p>
+<p>我们首先定义几个常量：</p>
 <ol>
-<li><code>ADDR_SIZE</code> is the size of an address, 20 bytes;</li>
-<li><code>TICKSPACING_SIZE</code> is the size of a tick spacing, 3 bytes (<code>uint24</code>);</li>
-<li><code>NEXT_OFFSET</code> is the offset of a next token address–to get it, we skip an address and a tick spacing;</li>
-<li><code>POP_OFFSET</code> is the offset of a pool key (token address + tick spacing + token address);</li>
-<li><code>MULTIPLE_POOLS_MIN_LENGTH</code> is the minimum length of a path that contains 2 or more pools (one set of pool parameters + tick spacing + token address).</li>
+<li>
+<p><code>ADDR_SIZE</code>是地址的大小，20字节；</p>
+</li>
+<li>
+<p><code>TICKSPACING_SIZE</code>是tick间距的大小，3字节（<code>uint24</code>）；</p>
+</li>
+<li>
+<p><code>NEXT_OFFSET</code>是下一个代币地址的偏移量——为了得到它，我们跳过一个地址和一个tick间距；</p>
+</li>
+<li>
+<p><code>POP_OFFSET</code>是池键的偏移量（代币地址 + tick间距 + 代币地址）；</p>
+</li>
+<li>
+<p><code>MULTIPLE_POOLS_MIN_LENGTH</code>是包含2个或更多池的路径的最小长度（一组池参数 + tick间距 + 代币地址）。</p>
+</li>
 </ol>
-<p>To count the number of pools in a path, we subtract the size of an address (first or last token in a path) and divide the remaining part by <code>NEXT_OFFSET</code> (address + tick spacing):</p>
+<p>要计算路径中的池数量，我们减去一个地址的大小（路径中的第一个或最后一个代币），并将剩余部分除以<code>NEXT_OFFSET</code>（地址 + tick间距）：</p>
 <pre><code class="language-solidity">function numPools(bytes memory path) internal pure returns (uint256) {
     return (path.length - ADDR_SIZE) / NEXT_OFFSET;
 }
 </code></pre>
-<h3 id="figuring-out-if-a-path-has-multiple-pools"><a class="header" href="#figuring-out-if-a-path-has-multiple-pools">Figuring Out if a Path Has Multiple Pools</a></h3>
-<p>To check if there are multiple pools in a path, we need to compare the length of a path with <code>MULTIPLE_POOLS_MIN_LENGTH</code>:</p>
+<h3 id="确定路径是否有多个池"><a class="header" href="#确定路径是否有多个池">确定路径是否有多个池</a></h3>
+<p>要检查路径中是否有多个池，我们需要将路径的长度与<code>MULTIPLE_POOLS_MIN_LENGTH</code>进行比较：</p>
 <pre><code class="language-solidity">function hasMultiplePools(bytes memory path) internal pure returns (bool) {
     return path.length &gt;= MULTIPLE_POOLS_MIN_LENGTH;
 }
 </code></pre>
-<h3 id="extracting-first-pool-parameters-from-a-path"><a class="header" href="#extracting-first-pool-parameters-from-a-path">Extracting First Pool Parameters From a Path</a></h3>
-<p>To implement other functions, we'll need a helper library because Solidity doesn't have native bytes manipulation functions. Specifically, we'll need a function to extract a sub-array from an array of bytes, and a couple of functions to convert bytes to <code>address</code> and <code>uint24</code>.</p>
-<p>Luckily, there's a great open-source library called <a href="https://github.com/GNSPS/solidity-bytes-utils">solidity-bytes-utils</a>. To use the library, we need to extend the <code>bytes</code> type in the <code>Path</code> library:</p>
+<h3 id="从路径中提取第一个池参数"><a class="header" href="#从路径中提取第一个池参数">从路径中提取第一个池参数</a></h3>
+<p>为了实现其他函数，我们需要一个辅助库，因为Solidity没有原生的字节操作函数。具体来说，我们需要一个函数来从字节数组中提取子数组，以及几个将字节转换为<code>address</code>和<code>uint24</code>的函数。</p>
+<p>幸运的是，有一个很棒的开源库叫做<a href="https://github.com/GNSPS/solidity-bytes-utils">solidity-bytes-utils</a>。要使用这个库，我们需要在<code>Path</code>库中扩展<code>bytes</code>类型：</p>
 <pre><code class="language-solidity">library Path {
     using BytesLib for bytes;
     ...
 }
 </code></pre>
-<p>We can implement <code>getFirstPool</code> now:</p>
+<p>现在我们可以实现<code>getFirstPool</code>了：</p>
 <pre><code class="language-solidity">function getFirstPool(bytes memory path)
     internal
     pure
@@ -4025,15 +4072,15 @@ library Path {
     return path.slice(0, POP_OFFSET);
 }
 </code></pre>
-<p>The function simply returns the first &quot;token address + tick spacing + token address&quot; segment encoded as bytes.</p>
-<h3 id="proceeding-to-a-next-pair-in-a-path"><a class="header" href="#proceeding-to-a-next-pair-in-a-path">Proceeding to a Next Pair in a Path</a></h3>
-<p>We'll use the next function when iterating over a path and throwing away processed pools. Notice that we're removing &quot;token address + tick spacing&quot;, not full pool parameters, because we need the other token address to calculate the next pool address.</p>
+<p>该函数简单地返回编码为字节的第一个&quot;代币地址 + tick间距 + 代币地址&quot;段。</p>
+<h3 id="在路径中进行到下一对"><a class="header" href="#在路径中进行到下一对">在路径中进行到下一对</a></h3>
+<p>当我们遍历路径并丢弃已处理的池时，我们将使用下一个函数。注意，我们移除的是&quot;代币地址 + tick间距&quot;，而不是完整的池参数，因为我们需要另一个代币地址来计算下一个池地址。</p>
 <pre><code class="language-solidity">function skipToken(bytes memory path) internal pure returns (bytes memory) {
     return path.slice(NEXT_OFFSET, path.length - NEXT_OFFSET);
 }
 </code></pre>
-<h3 id="decoding-first-pool-parameters"><a class="header" href="#decoding-first-pool-parameters">Decoding First Pool Parameters</a></h3>
-<p>And, finally, we need to decode the parameters of the first pool in a path:</p>
+<h3 id="解码第一个池参数"><a class="header" href="#解码第一个池参数">解码第一个池参数</a></h3>
+<p>最后，我们需要解码路径中第一个池的参数：</p>
 <pre><code class="language-solidity">function decodeFirstPool(bytes memory path)
     internal
     pure
@@ -4048,7 +4095,7 @@ library Path {
     tokenOut = path.toAddress(NEXT_OFFSET);
 }
 </code></pre>
-<p>Unfortunately, <code>BytesLib</code> doesn't implement <code>toUint24</code> function but we can implement it ourselves! <code>BytesLib</code> has multiple <code>toUintXX</code> functions, so we can take one of them and convert it to a <code>uint24</code> one:</p>
+<p>不幸的是，<code>BytesLib</code>没有实现<code>toUint24</code>函数，但我们可以自己实现它！<code>BytesLib</code>有多个<code>toUintXX</code>函数，所以我们可以取其中一个并将其转换为<code>uint24</code>版本：</p>
 <pre><code class="language-solidity">library BytesLibExt {
     function toUint24(bytes memory _bytes, uint256 _start)
         internal
@@ -4066,7 +4113,7 @@ library Path {
     }
 }
 </code></pre>
-<p>We're doing this in a new library contract, which we can then use in our Path library alongside <code>BytesLib</code>:</p>
+<p>我们在一个新的库合约中做这个，然后我们可以在我们的Path库中与<code>BytesLib</code>一起使用它：</p>
 <pre><code class="language-solidity">library Path {
     using BytesLib for bytes;
     using BytesLibExt for bytes;
@@ -4074,11 +4121,11 @@ library Path {
 }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
-<h1 id="multi-pool-swaps"><a class="header" href="#multi-pool-swaps">Multi-Pool Swaps</a></h1>
-<p>We're now proceeding to the core of this milestone–implementing multi-pool swaps in our contracts. We won't touch the Pool contract in this milestone because it's a core contract that should implement only core features. Multi-pool swaps are a utility feature, and we'll implement it in the Manager and Quoter contracts.</p>
-<h2 id="updating-the-manager-contract"><a class="header" href="#updating-the-manager-contract">Updating the Manager Contract</a></h2>
-<h3 id="single-pool-and-multi-pool-swaps"><a class="header" href="#single-pool-and-multi-pool-swaps">Single-Pool and Multi-Pool Swaps</a></h3>
-<p>In our current implementation, the <code>swap</code> function in the Manager contract supports only single-pool swaps and takes pool address in parameters:</p>
+<h1 id="多池交换-1"><a class="header" href="#多池交换-1">多池交换</a></h1>
+<p>我们现在进入这个里程碑的核心部分——在我们的合约中实现多池交换。在这个里程碑中，我们不会修改Pool合约，因为它是一个只应实现核心功能的核心合约。多池交换是一个实用功能，我们将在Manager和Quoter合约中实现它。</p>
+<h2 id="更新manager合约"><a class="header" href="#更新manager合约">更新Manager合约</a></h2>
+<h3 id="单池和多池交换"><a class="header" href="#单池和多池交换">单池和多池交换</a></h3>
+<p>在我们当前的实现中，Manager合约中的<code>swap</code>函数只支持单池交换，并在参数中接收池地址：</p>
 <pre><code class="language-solidity">function swap(
     address poolAddress_,
     bool zeroForOne,
@@ -4087,7 +4134,7 @@ library Path {
     bytes calldata data
 ) public returns (int256, int256) { ... }
 </code></pre>
-<p>We're going to split it into two functions: single-pool swap and multi-pool swap. These functions will have different set of parameters:</p>
+<p>我们将把它分成两个函数：单池交换和多池交换。这些函数将有不同的参数集：</p>
 <pre><code class="language-solidity">struct SwapSingleParams {
     address tokenIn;
     address tokenOut;
@@ -4104,11 +4151,15 @@ struct SwapParams {
 }
 </code></pre>
 <ol>
-<li><code>SwapSingleParams</code> takes pool parameters, input amount, and a limiting price–this is pretty much identical to what we had before. Notice, that <code>data</code> is no longer required.</li>
-<li><code>SwapParams</code> takes path, output amount recipient, input amount, and minimal output amount. The latter parameter replaces <code>sqrtPriceLimitX96</code> because, when doing multi-pool swaps, we cannot use the slippage protection from the Pool contract (which uses a limiting price). We need to implement another slippage protection, which checks the final output amount and compares it with <code>minAmountOut</code>: the slippage protection fails when the final output amount is smaller than <code>minAmountOut</code>.</li>
+<li>
+<p><code>SwapSingleParams</code>接收池参数、输入金额和限制价格——这与我们之前的内容基本相同。注意，不再需要<code>data</code>。</p>
+</li>
+<li>
+<p><code>SwapParams</code>接收路径、输出金额接收者、输入金额和最小输出金额。后一个参数替代了<code>sqrtPriceLimitX96</code>，因为在进行多池交换时，我们无法使用Pool合约中的滑点保护（它使用限制价格）。我们需要实现另一种滑点保护，它检查最终输出金额并与<code>minAmountOut</code>进行比较：当最终输出金额小于<code>minAmountOut</code>时，滑点保护失败。</p>
+</li>
 </ol>
-<h3 id="core-swapping-logic"><a class="header" href="#core-swapping-logic">Core Swapping Logic</a></h3>
-<p>Let's implement an internal <code>_swap</code> function that will be called by both single- and multi-pool swap functions. It'll prepare parameters and call <code>Pool.swap</code>.</p>
+<h3 id="核心交换逻辑"><a class="header" href="#核心交换逻辑">核心交换逻辑</a></h3>
+<p>让我们实现一个内部的<code>_swap</code>函数，它将被单池和多池交换函数调用。它将准备参数并调用<code>Pool.swap</code>。</p>
 <pre><code class="language-solidity">function _swap(
     uint256 amountIn,
     address recipient,
@@ -4117,23 +4168,23 @@ struct SwapParams {
 ) internal returns (uint256 amountOut) {
     ...
 </code></pre>
-<p><code>SwapCallbackData</code> is a new data structure that contains data we pass between swap functions and <code>uniswapV3SwapCallback</code>:</p>
+<p><code>SwapCallbackData</code>是一个新的数据结构，包含我们在交换函数和<code>uniswapV3SwapCallback</code>之间传递的数据：</p>
 <pre><code class="language-solidity">struct SwapCallbackData {
     bytes path;
     address payer;
 }
 </code></pre>
-<p><code>path</code> is a swap path and <code>payer</code> is the address that provides input tokens in swaps–we'll have different payers during multi-pool swaps. </p>
-<p>The first thing we do in <code>_swap</code>, is to extract pool parameters using the <code>Path</code> library:</p>
+<p><code>path</code>是交换路径，<code>payer</code>是在交换中提供输入代币的地址——在多池交换过程中，我们会有不同的支付者。</p>
+<p>在<code>_swap</code>中，我们首先要做的是使用<code>Path</code>库提取池参数：</p>
 <pre><code class="language-solidity">// function _swap(...) {
 (address tokenIn, address tokenOut, uint24 tickSpacing) = data
     .path
     .decodeFirstPool();
 </code></pre>
-<p>Then we identify swap direction:</p>
+<p>然后我们确定交换方向：</p>
 <pre><code class="language-solidity">bool zeroForOne = tokenIn &lt; tokenOut;
 </code></pre>
-<p>Then we make the actual swap:</p>
+<p>然后我们进行实际的交换：</p>
 <pre><code class="language-solidity">// function _swap(...) {
 (int256 amount0, int256 amount1) = getPool(
     tokenIn,
@@ -4153,7 +4204,7 @@ struct SwapParams {
         abi.encode(data)
     );
 </code></pre>
-<p>This piece is identical to what we had before but this time we're calling <code>getPool</code> to find the pool. <code>getPool</code> is a function that sorts tokens and calls <code>PoolAddress.computeAddress</code>:</p>
+<p>这部分与我们之前的内容相同，但这次我们调用<code>getPool</code>来找到池。<code>getPool</code>是一个对代币进行排序并调用<code>PoolAddress.computeAddress</code>的函数：</p>
 <pre><code class="language-solidity">function getPool(
     address token0,
     address token1,
@@ -4167,13 +4218,13 @@ struct SwapParams {
     );
 }
 </code></pre>
-<p>After making a swap, we need to figure out which of the amounts is the output one:</p>
+<p>进行交换后，我们需要确定哪个金额是输出金额：</p>
 <pre><code class="language-solidity">// function _swap(...) {
 amountOut = uint256(-(zeroForOne ? amount1 : amount0));
 </code></pre>
-<p>And that's it. Let's now look at how a single-pool swap works.</p>
-<h3 id="single-pool-swapping"><a class="header" href="#single-pool-swapping">Single-Pool Swapping</a></h3>
-<p><code>swapSingle</code> acts simply as a wrapper of <code>_swap</code>:</p>
+<p>就是这样。现在让我们看看单池交换是如何工作的。</p>
+<h3 id="单池交换"><a class="header" href="#单池交换">单池交换</a></h3>
+<p><code>swapSingle</code>简单地作为<code>_swap</code>的包装器：</p>
 <pre><code class="language-solidity">function swapSingle(SwapSingleParams calldata params)
     public
     returns (uint256 amountOut)
@@ -4193,16 +4244,16 @@ amountOut = uint256(-(zeroForOne ? amount1 : amount0));
     );
 }
 </code></pre>
-<p>Notice that we're building a one-pool path here: single-pool swap is a multi-pool swap with one pool 🙂.</p>
-<h3 id="multi-pool-swapping"><a class="header" href="#multi-pool-swapping">Multi-Pool Swapping</a></h3>
-<p>Multi-pool swapping is only slightly more difficult than single-pool swapping. Let's look at it:</p>
+<p>注意，我们在这里构建了一个单池路径：单池交换实际上是只有一个池的多池交换 🙂。</p>
+<h3 id="多池交换-2"><a class="header" href="#多池交换-2">多池交换</a></h3>
+<p>多池交换只比单池交换稍微复杂一些。让我们来看看：</p>
 <pre><code class="language-solidity">function swap(SwapParams memory params) public returns (uint256 amountOut) {
     address payer = msg.sender;
     bool hasMultiplePools;
     ...
 </code></pre>
-<p>The first swap is paid by the user because it's the user who provides input tokens.</p>
-<p>Then, we start iterating over pools in the path:</p>
+<p>第一次交换由用户支付，因为是用户提供输入代币。</p>
+<p>然后，我们开始遍历路径中的池：</p>
 <pre><code class="language-solidity">...
 while (true) {
     hasMultiplePools = params.path.hasMultiplePools();
@@ -4218,14 +4269,22 @@ while (true) {
     );
     ...
 </code></pre>
-<p>In each iteration, we're calling <code>_swap</code> with these parameters:</p>
+<p>在每次迭代中，我们用以下参数调用<code>_swap</code>：</p>
 <ol>
-<li><code>params.amountIn</code> tracks input amounts. During the first swap, it's the amount provided by the user. During the next swaps, it's the amounts returned from previous swaps.</li>
-<li><code>hasMultiplePools ? address(this) : params.recipient</code>–if there are multiple pools in the path, the recipient is the Manager contract, it'll store tokens between swaps. If there's only one pool (the last one) in the path, the recipient is the one specified in the parameters (usually the same user that initiates the swap).</li>
-<li><code>sqrtPriceLimitX96</code> is set to 0 to disable slippage protection in the Pool contract.</li>
-<li>The last parameter is what we pass to <code>uniswapV3SwapCallback</code>–we'll look at it shortly.</li>
+<li>
+<p><code>params.amountIn</code>跟踪输入金额。在第一次交换时，它是用户提供的金额。在后续的交换中，它是前一次交换返回的金额。</p>
+</li>
+<li>
+<p><code>hasMultiplePools ? address(this) : params.recipient</code>——如果路径中有多个池，接收者是Manager合约，它将在交换之间存储代币。如果路径中只有一个池（最后一个），接收者是参数中指定的接收者（通常是发起交换的用户）。</p>
+</li>
+<li>
+<p><code>sqrtPriceLimitX96</code>设置为0以禁用Pool合约中的滑点保护。</p>
+</li>
+<li>
+<p>最后一个参数是我们传递给<code>uniswapV3SwapCallback</code>的内容——我们稍后会看到。</p>
+</li>
 </ol>
-<p>After making one swap, we need to proceed to the next pool in a path or return:</p>
+<p>进行一次交换后，我们需要继续处理路径中的下一个池或返回：</p>
 <pre><code class="language-solidity">    ...
 
     if (hasMultiplePools) {
@@ -4237,13 +4296,13 @@ while (true) {
     }
 }
 </code></pre>
-<p>This is where we're changing payer and removing a processed pool from the path.</p>
-<p>Finally, the new slippage protection:</p>
+<p>这里我们正在更改支付者并从路径中移除已处理的池。</p>
+<p>最后，新的滑点保护：</p>
 <pre><code class="language-solidity">if (amountOut &lt; params.minAmountOut)
     revert TooLittleReceived(amountOut);
 </code></pre>
-<h3 id="swap-callback"><a class="header" href="#swap-callback">Swap Callback</a></h3>
-<p>Let's look at the updated swap callback:</p>
+<h3 id="交换回调"><a class="header" href="#交换回调">交换回调</a></h3>
+<p>让我们看看更新后的交换回调：</p>
 <pre><code class="language-solidity">function uniswapV3SwapCallback(
     int256 amount0,
     int256 amount1,
@@ -4267,19 +4326,29 @@ while (true) {
     }
 }
 </code></pre>
-<p>The callback expects encoded <code>SwapCallbackData</code> with path and payer address. It extracts pool tokens from the path, figures out the swap direction (<code>zeroForOne</code>), and the amount the contract needs to transfer out. Then, it acts differently depending on the payer address:</p>
+<p>回调期望接收编码的<code>SwapCallbackData</code>，其中包含路径和支付者地址。它从路径中提取池代币，确定交换方向（<code>zeroForOne</code>），以及合约需要转出的金额。然后，根据支付者地址的不同，它会有不同的行为：</p>
 <ol>
-<li>If the payer is the current contract (this is so when making consecutive swaps), it transfers tokens to the next pool (the one that called this callback) from the current contract's balance.</li>
-<li>If the payer is a different address (the user that initiated the swap), it transfers tokens from the user's balance.</li>
+<li>
+<p>如果支付者是当前合约（这在进行连续交换时会发生），它会从当前合约的余额中将代币转移到下一个池（调用此回调的池）。</p>
+</li>
+<li>
+<p>如果支付者是不同的地址（发起交换的用户），它会从用户的余额中转移代币。</p>
+</li>
 </ol>
-<h2 id="updating-the-quoter-contract"><a class="header" href="#updating-the-quoter-contract">Updating the Quoter Contract</a></h2>
-<p>Quoter is another contract that needs to be updated because we want to use it to also find output amounts in multi-pool swaps.  Similarly to Manager, we'll have two variants of the <code>quote</code> function: single-pool and multi-pool one. Let's look at the former first.</p>
-<h3 id="single-pool-quoting"><a class="header" href="#single-pool-quoting">Single-pool Quoting</a></h3>
-<p>We need to make only a couple of changes in our current <code>quote</code> implementation:</p>
+<h2 id="更新quoter合约"><a class="header" href="#更新quoter合约">更新Quoter合约</a></h2>
+<p>Quoter是另一个需要更新的合约，因为我们希望也用它来查找多池交换中的输出金额。与Manager类似，我们将有两种<code>quote</code>函数变体：单池和多池。让我们先看看前者。</p>
+<h3 id="单池报价"><a class="header" href="#单池报价">单池报价</a></h3>
+<p>我们只需要在当前的<code>quote</code>实现中做几处更改：</p>
 <ol>
-<li>rename it to <code>quoteSingle</code>;</li>
-<li>extract parameters into a struct (this is mostly a cosmetic change);</li>
-<li>instead of a pool address, take two token addresses and a tick spacing in the parameters.</li>
+<li>
+<p>将其重命名为<code>quoteSingle</code>；</p>
+</li>
+<li>
+<p>将参数提取到一个结构体中（这主要是一个美化的改变）；</p>
+</li>
+<li>
+<p>在参数中，不再使用池地址，而是使用两个代币地址和一个tick间距。</p>
+</li>
 </ol>
 <pre><code class="language-solidity">// src/UniswapV3Quoter.sol
 struct QuoteSingleParams {
@@ -4300,7 +4369,7 @@ function quoteSingle(QuoteSingleParams memory params)
 {
     ...
 </code></pre>
-<p>The only change we have in the body of the function is the usage of <code>getPool</code> to find the pool address:</p>
+<p>在函数主体中，我们唯一的变化是使用<code>getPool</code>来查找池地址：</p>
 <pre><code class="language-solidity">    ...
     IUniswapV3Pool pool = getPool(
         params.tokenIn,
@@ -4311,8 +4380,8 @@ function quoteSingle(QuoteSingleParams memory params)
     bool zeroForOne = params.tokenIn &lt; params.tokenOut;
     ...
 </code></pre>
-<h3 id="multi-pool-quoting"><a class="header" href="#multi-pool-quoting">Multi-pool Quoting</a></h3>
-<p>Multi-pool quoting implementation is similar to the multi-pool swapping one, but it uses fewer parameters.</p>
+<h3 id="多池报价"><a class="header" href="#多池报价">多池报价</a></h3>
+<p>多池报价的实现类似于多池交换，但使用的参数较少。</p>
 <pre><code class="language-solidity">function quote(bytes memory path, uint256 amountIn)
     public
     returns (
@@ -4325,7 +4394,7 @@ function quoteSingle(QuoteSingleParams memory params)
     tickAfterList = new int24[](path.numPools());
     ...
 </code></pre>
-<p>As parameters, we only need an input amount and a swap path. The function returns similar values as <code>quoteSingle</code>, but &quot;price after&quot; and &quot;tick after&quot; are collected after each swap, thus we need to return arrays.</p>
+<p>作为参数，我们只需要一个输入金额和一个交换路径。该函数返回与<code>quoteSingle</code>类似的值，但&quot;交换后价格&quot;和&quot;交换后tick&quot;是在每次交换后收集的，因此我们需要返回数组。</p>
 <pre><code class="language-solidity">uint256 i = 0;
 while (true) {
     (address tokenIn, address tokenOut, uint24 tickSpacing) = path
@@ -4358,27 +4427,35 @@ while (true) {
     }
 }
 </code></pre>
-<p>The logic of the loop is identical to the one in the updated <code>swap</code> function:</p>
+<p>循环的逻辑与更新后的<code>swap</code>函数中的逻辑相同：</p>
 <ol>
-<li>get the current pool's parameters;</li>
-<li>call <code>quoteSingle</code> on the current pool;</li>
-<li>save returned values;</li>
-<li>repeat if there are more pools in the path, or return otherwise.</li>
+<li>
+<p>获取当前池的参数；</p>
+</li>
+<li>
+<p>在当前池上调用<code>quoteSingle</code>；</p>
+</li>
+<li>
+<p>保存返回的值；</p>
+</li>
+<li>
+<p>如果路径中还有更多的池，则重复；否则返回。</p>
+</li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
-<h1 id="user-interface"><a class="header" href="#user-interface">User Interface</a></h1>
-<p>After introducing swap paths, we can significantly simplify the internals of our web app. First of all, every swap now uses a path since a path doesn't have to contain multiple pools. Second, it's now easier to change the direction of a swap: we can simply reverse the path. And, thanks to the unified pool address generation via <code>CREATE2</code> and unique salts, we no longer need to store pool addresses and care about token orders.</p>
-<p>However, we cannot integrate multi-pool swaps in the web app without adding one crucial algorithm. Ask yourself the question: &quot;How to find a path between two tokens that don't have a pool?&quot;</p>
-<h2 id="autorouter"><a class="header" href="#autorouter">AutoRouter</a></h2>
-<p>Uniswap implements what's called <em>AutoRouter</em>, an algorithm that finds the shortest path between two tokens. Moreover, it also splits one payment into multiple smaller payments to find the best average exchange rate. The profit can be as big as <a href="https://uniswap.org/blog/auto-router-v2">36.84% compared to trades that are not split</a>. This sounds great, however, we're not going to build such an advanced algorithm. Instead, we'll build something simpler.</p>
-<h2 id="a-simple-router-design"><a class="header" href="#a-simple-router-design">A Simple Router Design</a></h2>
-<p>Suppose we have a whole bunch of pools:</p>
-<p><img src="milestone_4/images/pools_scattered.png" alt="Scattered pools" /></p>
-<p>How do we find the shortest path between two tokens in such a mess?</p>
-<p>The most suitable solution for such kinds of tasks is based on a <em>graph</em>. A graph is a data structure that consists of nodes (objects representing something) and edges (links connecting nodes). We can turn that mess of pools into a graph where each node is a token (that has a pool) and each edge is a pool this token belongs to. So a pool represented as a graph is two nodes connected with an edge. The above pools become this graph:</p>
-<p><img src="milestone_4/images/pools_graph.png" alt="Pools graph" /></p>
-<p>The biggest advantage graphs give us is the ability to traverse its nodes, from one node to another, to find paths. Specifically, we'll use <a href="https://en.wikipedia.org/wiki/A*_search_algorithm">A* search algorithm</a>. Feel free to learn about how the algorithm works, but, in our app, we'll use a library to make our life easier. The set of libraries we'll use is <a href="https://github.com/anvaka/ngraph.graph">ngraph.ngraph</a> for building graphs and <a href="https://github.com/anvaka/ngraph.path">ngraph.path</a> for finding paths (it's the latter that implements A* search algorithm, as well as some others).</p>
-<p>In the UI app, let's create a pathfinder. This will be a class that, when instantiated, turns a list of pairs into a graph to later use the graph to find the shortest path between two tokens.</p>
+<h1 id="用户界面-3"><a class="header" href="#用户界面-3">用户界面</a></h1>
+<p>在引入交换路径后，我们可以显著简化我们网页应用的内部结构。首先，每次交换现在都使用一个路径，因为路径不必包含多个池子。其次，现在更容易改变交换的方向：我们可以简单地反转路径。而且，由于通过<code>CREATE2</code>和唯一盐值统一生成池子地址，我们不再需要存储池子地址并关心代币顺序。</p>
+<p>然而，如果不添加一个关键算法，我们就无法在网页应用中集成多池子交换。问问自己这个问题：&quot;如何在两个没有共同池子的代币之间找到路径？&quot;</p>
+<h2 id="自动路由器"><a class="header" href="#自动路由器">自动路由器</a></h2>
+<p>Uniswap实现了所谓的<em>自动路由器</em>，这是一种在两个代币之间找到最短路径的算法。此外，它还将一笔支付分割成多笔较小的支付，以找到最佳平均汇率。与未分割的交易相比，利润可以高达<a href="https://uniswap.org/blog/auto-router-v2">36.84%</a>。这听起来很棒，但是我们不打算构建如此高级的算法。相反，我们将构建一些更简单的东西。</p>
+<h2 id="简单路由器设计"><a class="header" href="#简单路由器设计">简单路由器设计</a></h2>
+<p>假设我们有一大堆池子：</p>
+<p><img src="milestone_4/images/pools_scattered.png" alt="分散的池子" /></p>
+<p>在这样一团混乱中，我们如何找到两个代币之间的最短路径？</p>
+<p>对于这类任务，最合适的解决方案是基于<em>图</em>的。图是一种由节点（代表某些东西的对象）和边（连接节点的链接）组成的数据结构。我们可以将那些混乱的池子转换成一个图，其中每个节点是一个代币（有一个池子），每条边是该代币所属的池子。因此，用图表示的池子是两个由一条边连接的节点。上面的池子变成了这个图：</p>
+<p><img src="milestone_4/images/pools_graph.png" alt="池子图" /></p>
+<p>图给我们带来的最大优势是能够遍历其节点，从一个节点到另一个节点，以找到路径。具体来说，我们将使用<a href="https://en.wikipedia.org/wiki/A*_search_algorithm">A*搜索算法</a>。你可以自由学习该算法的工作原理，但在我们的应用中，我们将使用一个库来简化我们的工作。我们将使用的库集是<a href="https://github.com/anvaka/ngraph.graph">ngraph.ngraph</a>用于构建图，以及<a href="https://github.com/anvaka/ngraph.path">ngraph.path</a>用于寻找路径（后者实现了A*搜索算法以及其他一些算法）。</p>
+<p>在UI应用中，让我们创建一个路径查找器。这将是一个类，当实例化时，将一系列代币对转换为图，以便稍后使用该图找到两个代币之间的最短路径。</p>
 <pre><code class="language-javascript">import createGraph from 'ngraph.graph';
 import path from 'ngraph.path';
 
@@ -4398,8 +4475,8 @@ class PathFinder {
 
   ...
 </code></pre>
-<p>In the constructor, we're creating an empty graph and fill it with linked nodes. Each node is a token address and links have associated data, which is tick spacings–we'll be able to extract this information from paths found by A*. After initializing a graph, we instantiate the A* algorithm implementation.</p>
-<p>Next, we need to implement a function that will find a path between tokens and turn it into an array of token addresses and tick spacings:</p>
+<p>在构造函数中，我们创建一个空图并用链接的节点填充它。每个节点是一个代币地址，链接具有相关数据，即tick间距——我们将能够从A<em>找到的路径中提取这些信息。初始化图后，我们实例化A</em>算法的实现。</p>
+<p>接下来，我们需要实现一个函数，该函数将在代币之间找到路径并将其转换为代币地址和tick间距的数组：</p>
 <pre><code class="language-javascript">findPath(fromToken, toToken) {
   return this.finder.find(fromToken, toToken).reduce((acc, node, i, orig) =&gt; {
     if (acc.length &gt; 0) {
@@ -4412,14 +4489,14 @@ class PathFinder {
   }, []).reverse();
 }
 </code></pre>
-<p><code>this.finder.find(fromToken, toToken)</code> returns a list of nodes and, unfortunately, doesn't contain the information about edges between them (we store tick spacings in edges). Thus, we're calling <code>this.graph.getLink(previousNode, currentNode)</code> to find edges.</p>
-<p>Now, whenever the user changes the input or output token, we can call <code>pathFinder.findPath(token0, token1)</code> to build a new path.</p>
+<p><code>this.finder.find(fromToken, toToken)</code>返回一个节点列表，但遗憾的是，它不包含节点之间边的信息（我们在边中存储tick间距）。因此，我们调用<code>this.graph.getLink(previousNode, currentNode)</code>来查找边。</p>
+<p>现在，每当用户更改输入或输出代币时，我们可以调用<code>pathFinder.findPath(token0, token1)</code>来构建一个新的路径。</p>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
-<h1 id="tick-rounding"><a class="header" href="#tick-rounding">Tick Rounding</a></h1>
-<p>Let's review some other changes we need to make to support different tick spacings.</p>
-<p>Tick spacing greater than 1 won't allow users to select arbitrary price ranges: tick indexes must be multiples of a tick spacing. For example, for tick spacing 60 we can have ticks: 0, 60, 120, 180, etc. Thus, when the user picks a range, we need to &quot;round&quot; it so its boundaries are multiples of the pool's tick spacing.</p>
-<h2 id="nearestusabletick-in-javascript"><a class="header" href="#nearestusabletick-in-javascript"><code>nearestUsableTick</code> in JavaScript</a></h2>
-<p>In <a href="https://github.com/Uniswap/v3-sdk">the Uniswap V3 SDK</a>, the function that does that is called <a href="https://github.com/Uniswap/v3-sdk/blob/b6cd73a71f8f8ec6c40c130564d3aff12c38e693/src/utils/nearestUsableTick.ts">nearestUsableTick</a>:</p>
+<h1 id="tick舍入"><a class="header" href="#tick舍入">Tick舍入</a></h1>
+<p>让我们回顾一下为支持不同的tick间距需要做的其他更改。</p>
+<p>大于1的tick间距不允许用户选择任意价格范围：tick索引必须是tick间距的倍数。例如，对于tick间距60，我们可以有以下tick：0、60、120、180等。因此，当用户选择一个范围时，我们需要将其&quot;舍入&quot;，使其边界成为池子tick间距的倍数。</p>
+<h2 id="javascript中的nearestusabletick"><a class="header" href="#javascript中的nearestusabletick">JavaScript中的<code>nearestUsableTick</code></a></h2>
+<p>在<a href="https://github.com/Uniswap/v3-sdk">Uniswap V3 SDK</a>中，执行此操作的函数称为<a href="https://github.com/Uniswap/v3-sdk/blob/b6cd73a71f8f8ec6c40c130564d3aff12c38e693/src/utils/nearestUsableTick.ts">nearestUsableTick</a>：</p>
 <pre><code class="language-javascript">/**
  * Returns the closest tick that is nearest a given tick and usable for the given tick spacing
  * @param tick the target tick
@@ -4435,11 +4512,11 @@ export function nearestUsableTick(tick: number, tickSpacing: number) {
   else return rounded
 }
 </code></pre>
-<p>At its core, it's just:</p>
+<p>从本质上讲，它只是：</p>
 <pre><code class="language-javascript">Math.round(tick / tickSpacing) * tickSpacing
 </code></pre>
-<p>Where <code>Math.round</code> is rounding to the nearest integer: when the fractional part is less than 0.5, it rounds to the lower integer; when it's greater than 0.5 it rounds to the greater integer; and when it's 0.5, it rounds to the greater integer as well.</p>
-<p>So, in the web app, we'll use <code>nearestUsableTick</code> when building <code>mint</code> parameters:</p>
+<p>其中<code>Math.round</code>是舍入到最接近的整数：当小数部分小于0.5时，它向下舍入到较小的整数；当大于0.5时，它向上舍入到较大的整数；当等于0.5时，它也向上舍入到较大的整数。</p>
+<p>因此，在网页应用中，我们在构建<code>mint</code>参数时将使用<code>nearestUsableTick</code>：</p>
 <pre><code class="language-javascript">const mintParams = {
   tokenA: pair.token0.address,
   tokenB: pair.token1.address,
@@ -4450,11 +4527,11 @@ export function nearestUsableTick(tick: number, tickSpacing: number) {
 }
 </code></pre>
 <blockquote>
-<p>In reality, it should be called whenever the user adjusts a price range because we want the user to see the actual price that will be created. In our simplified app, we make it less user-friendly.</p>
+<p>实际上，每当用户调整价格范围时都应该调用它，因为我们希望用户看到将要创建的实际价格。在我们简化的应用中，我们使其不那么用户友好。</p>
 </blockquote>
-<p>However, we also want to have a similar function in Solidity tests, but neither of the math libraries we're using implements it.</p>
-<h2 id="nearestusabletick-in-solidity"><a class="header" href="#nearestusabletick-in-solidity"><code>nearestUsableTick</code> in Solidity</a></h2>
-<p>In our smart contract tests, we need a way to round ticks and convert rounded prices to <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1133em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='1.08em' viewBox='0 0 400000 1080' preserveAspectRatio='xMinYMin slice'><path d='M95,702 c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14 c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54 c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10 s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429 c69,-144,104.5,-217.7,106.5,-221 l0 -0 c5.3,-9.3,12,-14,20,-14 H400000v40H845.2724 s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7 c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span>. In a previous chapter, we chose to use <a href="https://github.com/abdk-consulting/abdk-libraries-solidity">ABDKMath64x64</a> to handle fixed-point numbers math in tests. The library, however, doesn't implement the rounding function we need to port <code>nearestUsableTick</code>, so we'll need to implement it ourselves:</p>
+<p>然而，我们还希望在Solidity测试中有一个类似的函数，但我们使用的数学库都没有实现它。</p>
+<h2 id="solidity中的nearestusabletick"><a class="header" href="#solidity中的nearestusabletick">Solidity中的<code>nearestUsableTick</code></a></h2>
+<p>在我们的智能合约测试中，我们需要一种方法来舍入tick并将舍入后的价格转换为<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1133em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width='400em' height='1.08em' viewBox='0 0 400000 1080' preserveAspectRatio='xMinYMin slice'><path d='M95,702 c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14 c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54 c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10 s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429 c69,-144,104.5,-217.7,106.5,-221 l0 -0 c5.3,-9.3,12,-14,20,-14 H400000v40H845.2724 s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7 c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span>。在前面的章节中，我们选择使用<a href="https://github.com/abdk-consulting/abdk-libraries-solidity">ABDKMath64x64</a>来处理测试中的定点数学运算。然而，该库并没有实现我们需要移植<code>nearestUsableTick</code>的舍入函数，所以我们需要自己实现它：</p>
 <pre><code class="language-solidity">function divRound(int128 x, int128 y)
     internal
     pure
@@ -4469,14 +4546,22 @@ export function nearestUsableTick(tick: number, tickSpacing: number) {
     }
 }
 </code></pre>
-<p>The function does multiple things:</p>
+<p>该函数执行多个操作：</p>
 <ol>
-<li>it divides two Q64.64 numbers;</li>
-<li>it then rounds the result to the decimal one (<code>result = quot &gt;&gt; 64</code>), the fractional part is lost at this point (i.e. the result is rounded down);</li>
-<li>it then divides the quotient by <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8141em;"></span><span class="mord"><span class="mord">2</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">64</span></span></span></span></span></span></span></span></span></span></span></span>, takes the remainder, and compares it with <code>0x8000000000000000</code> (which is 0.5 in Q64.64);</li>
-<li>if the remainder is greater or equal to 0.5, it rounds the result to the greater integer.</li>
+<li>
+<p>它将两个Q64.64数相除；</p>
+</li>
+<li>
+<p>然后将结果舍入到小数点前一位（<code>result = quot &gt;&gt; 64</code>），此时小数部分丢失（即结果向下舍入）；</p>
+</li>
+<li>
+<p>然后将商除以<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8141em;"></span><span class="mord"><span class="mord">2</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">64</span></span></span></span></span></span></span></span></span></span></span></span>，取余数，并与<code>0x8000000000000000</code>（在Q64.64中为0.5）进行比较；</p>
+</li>
+<li>
+<p>如果余数大于或等于0.5，则将结果向上舍入到较大的整数。</p>
+</li>
 </ol>
-<p>What we get is an integer rounded according to the rules of <code>Math.round</code> from JavaScript. We can then re-implement <code>nearestUsableTick</code>:</p>
+<p>我们得到的是根据JavaScript中<code>Math.round</code>规则舍入的整数。然后我们可以重新实现<code>nearestUsableTick</code>：</p>
 <pre><code class="language-solidity">function nearestUsableTick(int24 tick_, uint24 tickSpacing)
     internal
     pure
@@ -4493,7 +4578,7 @@ export function nearestUsableTick(tick: number, tickSpacing: number) {
     }
 }
 </code></pre>
-<p>That's it!</p>
+<p>就是这样！</p>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="手续费和价格预言机"><a class="header" href="#手续费和价格预言机">手续费和价格预言机</a></h1>
 <p>在这个里程碑中，我们将为我们的 Uniswap 实现添加两个新功能。它们有一个共同点：它们都是建立在我们已经构建的基础之上——这就是为什么我们将它们推迟到这个里程碑。然而，它们的重要性并不相同。</p>
@@ -4924,9 +5009,9 @@ function mint(...) {
 <p>There's also a way to collect fees only without burning liquidity: burn 0 amount of liquidity and then call <code>collect</code>.  During burning, the position will be updated and the token amounts it owes will be updated as well.</p>
 <p>And, that's it! Our pool implementation is complete now!</p>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
-<h1 id="flash-loan-fees"><a class="header" href="#flash-loan-fees">Flash Loan Fees</a></h1>
-<p>In a previous chapter, we implemented flash loans and made them free. However, Uniswap collects swap fees on flash loans, and we're going to add this to our implementation: the amounts repaid by flash loan borrowers must include a fee.</p>
-<p>Here's what the updated <code>flash</code> function looks like:</p>
+<h1 id="闪电贷费用"><a class="header" href="#闪电贷费用">闪电贷费用</a></h1>
+<p>在前一章中，我们实现了闪电贷并使其免费。然而，Uniswap在闪电贷上收取交换费用，我们将把这一点添加到我们的实现中：闪电贷借款人偿还的金额必须包含费用。</p>
+<p>以下是更新后的<code>flash</code>函数的样子：</p>
 <pre><code class="language-solidity">function flash(
     uint256 amount0,
     uint256 amount1,
@@ -4955,7 +5040,7 @@ function mint(...) {
     emit Flash(msg.sender, amount0, amount1);
 }
 </code></pre>
-<p>What's changed is that we're now calculating fees on the amounts requested by the caller and then expect pool balances to have grown by the fee amounts.</p>
+<p>变化的是，我们现在对调用者请求的金额计算费用，然后期望池子余额增加相应的费用金额。</p>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="protocol-fees"><a class="header" href="#protocol-fees">Protocol Fees</a></h1>
 <p>While working on the Uniswap implementation, you've probably asked yourself, &quot;How does Uniswap make money?&quot; Well, it doesn't (at least as of September 2022).</p>
@@ -5477,10 +5562,10 @@ secs = [0, 5, 10, 15, 18]
 </code></pre>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
-<h1 id="user-interface-1"><a class="header" href="#user-interface-1">User Interface</a></h1>
-<p>In this milestone, we've added the ability to remove liquidity from a pool and collect accumulated fees. Thus, we need to reflect these changes in the user interface to allow users to remove liquidity.</p>
-<h2 id="fetching-positions"><a class="header" href="#fetching-positions">Fetching Positions</a></h2>
-<p>To let the user choose how much liquidity to remove, we first need to fetch the user's positions from a pool. To make this easier, we can add a helper function to the Manager contract, which will return the user position in a specific pool:</p>
+<h1 id="用户界面-4"><a class="header" href="#用户界面-4">用户界面</a></h1>
+<p>在这个里程碑中，我们添加了从池子中移除流动性和收集累积费用的能力。因此，我们需要在用户界面中反映这些变化，以允许用户移除流动性。</p>
+<h2 id="获取头寸"><a class="header" href="#获取头寸">获取头寸</a></h2>
+<p>为了让用户选择要移除多少流动性，我们首先需要从池子中获取用户的头寸。为了使这更容易，我们可以在Manager合约中添加一个辅助函数，该函数将返回用户在特定池子中的头寸：</p>
 <pre><code class="language-solidity">function getPosition(GetPositionParams calldata params)
     public
     view
@@ -5511,8 +5596,8 @@ secs = [0, 5, 10, 15, 18]
     );
 }
 </code></pre>
-<p>This will free us from calculating a pool address and a position key on the front end.</p>
-<p>Then, after the user has typed in a position range, we can try fetching a position:</p>
+<p>这将使我们在前端免于计算池子地址和头寸密钥。</p>
+<p>然后，在用户输入头寸范围后，我们可以尝试获取头寸：</p>
 <pre><code class="language-js">const getAvailableLiquidity = debounce((amount, isLower) =&gt; {
   const lowerTick = priceToTick(isLower ? amount : lowerPrice);
   const upperTick = priceToTick(isLower ? upperPrice : amount);
@@ -5531,8 +5616,8 @@ secs = [0, 5, 10, 15, 18]
     .catch(err =&gt; console.error(err));
 }, 500);
 </code></pre>
-<h2 id="getting-pool-address"><a class="header" href="#getting-pool-address">Getting Pool Address</a></h2>
-<p>Since we need to call <code>burn</code> and <code>collect</code> on a pool, we still need to compute the pool's address on the front end. Recall that pool addresses are computed using the <code>CREATE2</code> opcode, which requires a salt and the hash of the contract's code. Luckily, Ether.js has the <code>getCreate2Address</code> function that allows to compute <code>CREATE2</code> in JavaScript:</p>
+<h2 id="获取池子地址"><a class="header" href="#获取池子地址">获取池子地址</a></h2>
+<p>由于我们需要在池子上调用<code>burn</code>和<code>collect</code>，我们仍然需要在前端计算池子的地址。回想一下，池子地址是使用<code>CREATE2</code>操作码计算的，这需要一个盐值和合约代码的哈希。幸运的是，Ether.js有<code>getCreate2Address</code>函数，允许在JavaScript中计算<code>CREATE2</code>：</p>
 <pre><code class="language-js">const sortTokens = (tokenA, tokenB) =&gt; {
   return tokenA.toLowerCase() &lt; tokenB.toLowerCase ? [tokenA, tokenB] : [tokenB, tokenA];
 }
@@ -5551,15 +5636,15 @@ const computePoolAddress = (factory, tokenA, tokenB, fee) =&gt; {
   );
 }
 </code></pre>
-<p>However, the pool's codehash has to be hard coded because we don't want to store its code on the front end to calculate the hash. So, we'll use Forge to get the hash:</p>
+<p>然而，池子的代码哈希必须硬编码，因为我们不想在前端存储其代码来计算哈希。所以，我们将使用Forge来获取哈希：</p>
 <pre><code class="language-shell">$ forge inspect UniswapV3Pool bytecode| xargs cast keccak 
 0x...
 </code></pre>
-<p>And then use the output value in a JS constant:</p>
+<p>然后在JS常量中使用输出值：</p>
 <pre><code class="language-js">const poolCodeHash = &quot;0x9dc805423bd1664a6a73b31955de538c338bac1f5c61beb8f4635be5032076a2&quot;;
 </code></pre>
-<h2 id="removing-liquidity-1"><a class="header" href="#removing-liquidity-1">Removing Liquidity</a></h2>
-<p>After obtaining the liquidity amount and the pool address, we're ready to call <code>burn</code>:</p>
+<h2 id="移除流动性"><a class="header" href="#移除流动性">移除流动性</a></h2>
+<p>在获得流动性数量和池子地址后，我们准备调用<code>burn</code>：</p>
 <pre><code class="language-js">const removeLiquidity = (e) =&gt; {
   e.preventDefault();
 
@@ -5589,7 +5674,7 @@ const computePoolAddress = (factory, tokenA, tokenB, fee) =&gt; {
     .catch(err =&gt; console.error(err));
 }
 </code></pre>
-<p>If burning was successful, we immediately call <code>collect</code> to collect the token amounts that were freed during burning.</p>
+<p>如果燃烧成功，我们立即调用<code>collect</code>来收集在燃烧过程中释放的代币数量。</p>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="nft-头寸"><a class="header" href="#nft-头寸">NFT 头寸</a></h1>
 <p>这是本书的点睛之笔。在这个里程碑中，我们将学习如何扩展 Uniswap 合约并将其集成到第三方协议中。这种可能性是核心合约只包含关键功能的直接结果，这允许将其集成到其他合约中，而无需向核心合约添加新功能。</p>
@@ -5774,7 +5859,7 @@ positions[tokenId] = tokenPosition;
 }
 </code></pre>
 <p>这个函数确保存在一个已有的token，并使用现有position的参数调用<code>pool.mint()</code>。</p>
-<h2 id="移除流动性"><a class="header" href="#移除流动性">移除流动性</a></h2>
+<h2 id="移除流动性-1"><a class="header" href="#移除流动性-1">移除流动性</a></h2>
 <p>回想一下，在<code>UniswapV3Manager</code>合约中，我们没有实现<code>burn</code>函数，因为我们希望用户成为流动性position的所有者。现在，我们希望NFT管理器成为所有者。我们可以在其中实现流动性销毁：</p>
 <pre><code class="language-solidity">struct RemoveLiquidityParams {
     uint256 tokenId;

@@ -180,10 +180,10 @@
                 <div id="content" class="content">
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
-<h1 id="user-interface"><a class="header" href="#user-interface">User Interface</a></h1>
-<p>In this milestone, we've added the ability to remove liquidity from a pool and collect accumulated fees. Thus, we need to reflect these changes in the user interface to allow users to remove liquidity.</p>
-<h2 id="fetching-positions"><a class="header" href="#fetching-positions">Fetching Positions</a></h2>
-<p>To let the user choose how much liquidity to remove, we first need to fetch the user's positions from a pool. To make this easier, we can add a helper function to the Manager contract, which will return the user position in a specific pool:</p>
+<h1 id="用户界面"><a class="header" href="#用户界面">用户界面</a></h1>
+<p>在这个里程碑中，我们添加了从池子中移除流动性和收集累积费用的能力。因此，我们需要在用户界面中反映这些变化，以允许用户移除流动性。</p>
+<h2 id="获取头寸"><a class="header" href="#获取头寸">获取头寸</a></h2>
+<p>为了让用户选择要移除多少流动性，我们首先需要从池子中获取用户的头寸。为了使这更容易，我们可以在Manager合约中添加一个辅助函数，该函数将返回用户在特定池子中的头寸：</p>
 <pre><code class="language-solidity">function getPosition(GetPositionParams calldata params)
     public
     view
@@ -214,8 +214,8 @@
     );
 }
 </code></pre>
-<p>This will free us from calculating a pool address and a position key on the front end.</p>
-<p>Then, after the user has typed in a position range, we can try fetching a position:</p>
+<p>这将使我们在前端免于计算池子地址和头寸密钥。</p>
+<p>然后，在用户输入头寸范围后，我们可以尝试获取头寸：</p>
 <pre><code class="language-js">const getAvailableLiquidity = debounce((amount, isLower) =&gt; {
   const lowerTick = priceToTick(isLower ? amount : lowerPrice);
   const upperTick = priceToTick(isLower ? upperPrice : amount);
@@ -234,8 +234,8 @@
     .catch(err =&gt; console.error(err));
 }, 500);
 </code></pre>
-<h2 id="getting-pool-address"><a class="header" href="#getting-pool-address">Getting Pool Address</a></h2>
-<p>Since we need to call <code>burn</code> and <code>collect</code> on a pool, we still need to compute the pool's address on the front end. Recall that pool addresses are computed using the <code>CREATE2</code> opcode, which requires a salt and the hash of the contract's code. Luckily, Ether.js has the <code>getCreate2Address</code> function that allows to compute <code>CREATE2</code> in JavaScript:</p>
+<h2 id="获取池子地址"><a class="header" href="#获取池子地址">获取池子地址</a></h2>
+<p>由于我们需要在池子上调用<code>burn</code>和<code>collect</code>，我们仍然需要在前端计算池子的地址。回想一下，池子地址是使用<code>CREATE2</code>操作码计算的，这需要一个盐值和合约代码的哈希。幸运的是，Ether.js有<code>getCreate2Address</code>函数，允许在JavaScript中计算<code>CREATE2</code>：</p>
 <pre><code class="language-js">const sortTokens = (tokenA, tokenB) =&gt; {
   return tokenA.toLowerCase() &lt; tokenB.toLowerCase ? [tokenA, tokenB] : [tokenB, tokenA];
 }
@@ -254,15 +254,15 @@ const computePoolAddress = (factory, tokenA, tokenB, fee) =&gt; {
   );
 }
 </code></pre>
-<p>However, the pool's codehash has to be hard coded because we don't want to store its code on the front end to calculate the hash. So, we'll use Forge to get the hash:</p>
+<p>然而，池子的代码哈希必须硬编码，因为我们不想在前端存储其代码来计算哈希。所以，我们将使用Forge来获取哈希：</p>
 <pre><code class="language-shell">$ forge inspect UniswapV3Pool bytecode| xargs cast keccak 
 0x...
 </code></pre>
-<p>And then use the output value in a JS constant:</p>
+<p>然后在JS常量中使用输出值：</p>
 <pre><code class="language-js">const poolCodeHash = &quot;0x9dc805423bd1664a6a73b31955de538c338bac1f5c61beb8f4635be5032076a2&quot;;
 </code></pre>
-<h2 id="removing-liquidity"><a class="header" href="#removing-liquidity">Removing Liquidity</a></h2>
-<p>After obtaining the liquidity amount and the pool address, we're ready to call <code>burn</code>:</p>
+<h2 id="移除流动性"><a class="header" href="#移除流动性">移除流动性</a></h2>
+<p>在获得流动性数量和池子地址后，我们准备调用<code>burn</code>：</p>
 <pre><code class="language-js">const removeLiquidity = (e) =&gt; {
   e.preventDefault();
 
@@ -292,7 +292,7 @@ const computePoolAddress = (factory, tokenA, tokenB, fee) =&gt; {
     .catch(err =&gt; console.error(err));
 }
 </code></pre>
-<p>If burning was successful, we immediately call <code>collect</code> to collect the token amounts that were freed during burning.</p>
+<p>如果燃烧成功，我们立即调用<code>collect</code>来收集在燃烧过程中释放的代币数量。</p>
 
                     </main>
 
