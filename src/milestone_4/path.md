@@ -1,48 +1,52 @@
-# Swap Path
+# 交换路径
 
-Let's imagine that we have only these pools: WETH/USDC, USDC/USDT, and WBTC/USDT. If we want to swap WETH for WBTC, we'll need to make multiple swaps (WETH→USDC→USDT→WBTC) since there's no WETH/WBTC pool. We can do this manually or we can improve our contracts to handle such chained, or multi-pool, swaps. Of course, we'll do the latter!
+让我们想象一下，我们只有这些池：WETH/USDC、USDC/USDT和WBTC/USDT。如果我们想将WETH换成WBTC，我们需要进行多次交换（WETH→USDC→USDT→WBTC），因为没有WETH/WBTC池。我们可以手动完成这个过程，或者我们可以改进我们的合约来处理这种链式或多池交换。当然，我们会选择后者！
 
-When doing multi-pool swaps, we send the output of the previous swap to the input of the next one. For example:
+在进行多池交换时，我们将前一次交换的输出发送到下一次交换的输入。例如：
 
-1. in the WETH/USDC pool, we're selling WETH and buying USDC;
-1. in the USDC/USDT pool, we're selling USDC from the previous swap and buying USDT;
-1. in the WBTC/USDT pool, we're selling USDT from the previous pool and buying WBTC.
+1. 在WETH/USDC池中，我们卖出WETH并买入USDC；
 
-We can turn this series into a path:
+2. 在USDC/USDT池中，我们卖出上一次交换得到的USDC并买入USDT；
+
+3. 在WBTC/USDT池中，我们卖出上一个池中得到的USDT并买入WBTC。
+
+我们可以将这个系列转化为一个路径：
 
 ```
 WETH/USDC,USDC/USDT,WBTC/USDT
 ```
 
-And iterate over such a path in our contracts to perform multiple swaps in one transaction. However, recall from the previous chapter that we don't need to know pool addresses and, instead, we can derive them from pool parameters. Thus, the above path can be turned into a series of tokens:
+并在我们的合约中遍历这样的路径，以在一个交易中执行多次交换。然而，回想一下上一章，我们不需要知道池地址，相反，我们可以从池参数中推导出它们。因此，上述路径可以转化为一系列代币：
 
 ```
 WETH, USDC, USDT, WBTC
 ```
 
-Recall that tick spacing is another parameter (besides tokens) that identifies a pool. Thus, the above path becomes:
-
+回想一下，tick间距是另一个识别池的参数（除了代币之外）。因此，上述路径变为：
 ```
 WETH, 60, USDC, 10, USDT, 60, WBTC
 ```
 
-Where 60 and 10 are tick spacings. We're using 60 in volatile pairs (e.g. ETH/USDC, WBTC/USDT) and 10 in stablecoin pairs (USDC/USDT).
+其中60和10是tick间距。我们在波动较大的交易对（如ETH/USDC、WBTC/USDT）中使用60，在稳定币交易对（USDC/USDT）中使用10。
 
-Now, having such a path, we can iterate over it to build pool parameters for each of the pools:
+现在，有了这样的路径，我们可以遍历它来为每个池构建池参数：
 
-1. `WETH, 60, USDC`;
-1. `USDC, 10, USDT`;
-1. `USDT, 60, WBTC`.
+1. `WETH, 60, USDC`；
 
-Knowing these parameters, we can derive pool addresses using `PoolAddress.computeAddress`, which we implemented in the previous chapter.
+2. `USDC, 10, USDT`；
 
-> We also can use this concept when doing swaps within one pool: the path would simply contain the parameters of one pool. And, thus, we can use swap paths in all swaps, universally.
+3. `USDT, 60, WBTC`。
 
-Let's build a library to work with swap paths.
+知道这些参数后，我们可以使用`PoolAddress.computeAddress`（我们在上一章中实现的）来推导出池地址。
 
-## Path Library
+> 我们也可以在单个池内进行交换时使用这个概念：路径将只包含一个池的参数。因此，我们可以在所有交换中普遍使用交换路径。
 
-In code, a swap path is a sequence of bytes. In Solidity, a path can be built like this:
+让我们构建一个库来处理交换路径。
+
+## Path库
+
+在代码中，交换路径是一个字节序列。在Solidity中，可以这样构建路径：
+
 ```solidity
 bytes.concat(
     bytes20(address(weth)),
@@ -55,7 +59,7 @@ bytes.concat(
 );
 ```
 
-It looks like this:
+它看起来像这样：
 ```shell
 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 # weth address
   00003c                                   # 60
@@ -66,15 +70,22 @@ It looks like this:
   2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599 # wbtc address
 ```
 
-These are the functions that we'll need to implement:
-1. calculating the number of pools in a path;
-1. figuring out if a path has multiple pools;
-1. extracting first pool parameters from a path;
-1. proceeding to the next pair in a path;
-1. and decoding first pool parameters.
+这些是我们需要实现的函数：
 
-### Calculating the Number of Pools in a Path
-Let's begin with calculating the number of pools in a path:
+1. 计算路径中的池数量；
+
+2. 确定路径是否有多个池；
+
+3. 从路径中提取第一个池的参数；
+
+4. 在路径中进行到下一对；
+
+5. 解码第一个池的参数。
+
+### 计算路径中的池数量
+
+让我们从计算路径中的池数量开始：
+
 ```solidity
 // src/lib/Path.sol
 library Path {
@@ -94,14 +105,19 @@ library Path {
     ...
 ```
 
-We first define a few constants:
-1. `ADDR_SIZE` is the size of an address, 20 bytes;
-1. `TICKSPACING_SIZE` is the size of a tick spacing, 3 bytes (`uint24`);
-1. `NEXT_OFFSET` is the offset of a next token address–to get it, we skip an address and a tick spacing;
-1. `POP_OFFSET` is the offset of a pool key (token address + tick spacing + token address);
-1. `MULTIPLE_POOLS_MIN_LENGTH` is the minimum length of a path that contains 2 or more pools (one set of pool parameters + tick spacing + token address).
+我们首先定义几个常量：
 
-To count the number of pools in a path, we subtract the size of an address (first or last token in a path) and divide the remaining part by `NEXT_OFFSET` (address + tick spacing):
+1. `ADDR_SIZE`是地址的大小，20字节；
+
+2. `TICKSPACING_SIZE`是tick间距的大小，3字节（`uint24`）；
+
+3. `NEXT_OFFSET`是下一个代币地址的偏移量——为了得到它，我们跳过一个地址和一个tick间距；
+
+4. `POP_OFFSET`是池键的偏移量（代币地址 + tick间距 + 代币地址）；
+
+5. `MULTIPLE_POOLS_MIN_LENGTH`是包含2个或更多池的路径的最小长度（一组池参数 + tick间距 + 代币地址）。
+
+要计算路径中的池数量，我们减去一个地址的大小（路径中的第一个或最后一个代币），并将剩余部分除以`NEXT_OFFSET`（地址 + tick间距）：
 
 ```solidity
 function numPools(bytes memory path) internal pure returns (uint256) {
@@ -109,8 +125,9 @@ function numPools(bytes memory path) internal pure returns (uint256) {
 }
 ```
 
-### Figuring Out if a Path Has Multiple Pools
-To check if there are multiple pools in a path, we need to compare the length of a path with `MULTIPLE_POOLS_MIN_LENGTH`:
+### 确定路径是否有多个池
+
+要检查路径中是否有多个池，我们需要将路径的长度与`MULTIPLE_POOLS_MIN_LENGTH`进行比较：
 
 ```solidity
 function hasMultiplePools(bytes memory path) internal pure returns (bool) {
@@ -118,11 +135,12 @@ function hasMultiplePools(bytes memory path) internal pure returns (bool) {
 }
 ```
 
-### Extracting First Pool Parameters From a Path
+### 从路径中提取第一个池参数
 
-To implement other functions, we'll need a helper library because Solidity doesn't have native bytes manipulation functions. Specifically, we'll need a function to extract a sub-array from an array of bytes, and a couple of functions to convert bytes to `address` and `uint24`.
+为了实现其他函数，我们需要一个辅助库，因为Solidity没有原生的字节操作函数。具体来说，我们需要一个函数来从字节数组中提取子数组，以及几个将字节转换为`address`和`uint24`的函数。
 
-Luckily, there's a great open-source library called [solidity-bytes-utils](https://github.com/GNSPS/solidity-bytes-utils). To use the library, we need to extend the `bytes` type in the `Path` library:
+幸运的是，有一个很棒的开源库叫做[solidity-bytes-utils](https://github.com/GNSPS/solidity-bytes-utils)。要使用这个库，我们需要在`Path`库中扩展`bytes`类型：
+
 ```solidity
 library Path {
     using BytesLib for bytes;
@@ -130,7 +148,7 @@ library Path {
 }
 ```
 
-We can implement `getFirstPool` now:
+现在我们可以实现`getFirstPool`了：
 ```solidity
 function getFirstPool(bytes memory path)
     internal
@@ -141,12 +159,11 @@ function getFirstPool(bytes memory path)
 }
 ```
 
-The function simply returns the first "token address + tick spacing + token address" segment encoded as bytes.
+该函数简单地返回编码为字节的第一个"代币地址 + tick间距 + 代币地址"段。
 
-### Proceeding to a Next Pair in a Path
+### 在路径中进行到下一对
 
-
-We'll use the next function when iterating over a path and throwing away processed pools. Notice that we're removing "token address + tick spacing", not full pool parameters, because we need the other token address to calculate the next pool address.
+当我们遍历路径并丢弃已处理的池时，我们将使用下一个函数。注意，我们移除的是"代币地址 + tick间距"，而不是完整的池参数，因为我们需要另一个代币地址来计算下一个池地址。
 
 ```solidity
 function skipToken(bytes memory path) internal pure returns (bytes memory) {
@@ -154,9 +171,9 @@ function skipToken(bytes memory path) internal pure returns (bytes memory) {
 }
 ```
 
-### Decoding First Pool Parameters
+### 解码第一个池参数
 
-And, finally, we need to decode the parameters of the first pool in a path:
+最后，我们需要解码路径中第一个池的参数：
 
 ```solidity
 function decodeFirstPool(bytes memory path)
@@ -174,7 +191,8 @@ function decodeFirstPool(bytes memory path)
 }
 ```
 
-Unfortunately, `BytesLib` doesn't implement `toUint24` function but we can implement it ourselves! `BytesLib` has multiple `toUintXX` functions, so we can take one of them and convert it to a `uint24` one:
+不幸的是，`BytesLib`没有实现`toUint24`函数，但我们可以自己实现它！`BytesLib`有多个`toUintXX`函数，所以我们可以取其中一个并将其转换为`uint24`版本：
+
 ```solidity
 library BytesLibExt {
     function toUint24(bytes memory _bytes, uint256 _start)
@@ -194,7 +212,7 @@ library BytesLibExt {
 }
 ```
 
-We're doing this in a new library contract, which we can then use in our Path library alongside `BytesLib`:
+我们在一个新的库合约中做这个，然后我们可以在我们的Path库中与`BytesLib`一起使用它：
 
 ```solidity
 library Path {

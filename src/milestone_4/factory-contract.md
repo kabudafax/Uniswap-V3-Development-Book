@@ -1,38 +1,46 @@
-# Factory Contract
+# Factory合约
 
-Uniswap is designed in a way that assumes many discrete Pool contracts, with each pool handling swaps of one token pair.  This looks problematic when we want to swap between two tokens that don't have a pool–if there's no pool, no swaps are possible. However, we can still do intermediate swaps: first swap to a token that has pairs with either of the tokens and then swap this token to the target token. This can also go deeper and have more intermediate tokens. However, doing this manually is cumbersome, and, luckily, we can make the process easier by implementing it in our smart contracts.
+Uniswap的设计假设存在多个独立的Pool合约，每个池子处理一对代币的交换。当我们想要交换两个没有池子的代币时，这看起来是个问题——如果没有池子，就无法进行交换。然而，我们仍然可以进行中间交换：首先交换到一个与两个代币中任一个有配对的代币，然后将这个代币交换到目标代币。这个过程可以更深入，涉及更多的中间代币。不过，手动执行这个过程很麻烦，幸运的是，我们可以通过在智能合约中实现这个过程来简化它。
 
-The Factory contract is a contract that serves multiple purposes:
-1. It acts as a centralized registry of Pool contracts. Using a factory, you can find all deployed pools, their tokens, and addresses.
-1. It simplifies the deployment of Pool contracts. EVM allows deployment of smart contracts from smart contracts–Factory uses this feature to make pool deployment a breeze.
-1. It makes pool addresses predictable and allows to compute them without making calls to the registry. This makes
-pools easily discoverable.
+Factory合约是一个服务于多个目的的合约：
 
-Let's build the Factory contract! But before doing this, we need to learn something new.
+1. 它作为Pool合约的中央注册表。使用Factory，你可以找到所有已部署的池子、它们的代币和地址。
 
-## The `CREATE` and `CREATE2` Opcodes
+2. 它简化了Pool合约的部署。EVM允许从智能合约部署智能合约——Factory使用这个特性使池子部署变得轻而易举。
 
-EVM has two ways of deploying contracts: via `CREATE` or via `CREATE2` opcode. The only difference between them is how new contract address is generated:
-1. `CREATE` uses the deployer's account `nonce` to generate a contract address (in pseudocode):
+3. 它使池子地址可预测，并允许在不调用注册表的情况下计算它们。这使得池子易于发现。
+
+让我们来构建Factory合约！但在此之前，我们需要学习一些新东西。
+
+## `CREATE`和`CREATE2`操作码
+
+EVM有两种部署合约的方式：通过`CREATE`或通过`CREATE2`操作码。它们之间的唯一区别是新合约地址的生成方式：
+
+1. `CREATE`使用部署者账户的`nonce`来生成合约地址（伪代码）：
+
     ```
     KECCAK256(deployer.address, deployer.nonce)
     ```
-    `nonce` is an account-specific counter of transactions. Using `nonce` in new contract address generation makes it hard to compute an address in other contracts or off-chain apps, mainly because, to find the nonce a contract was deployed at, one needs to scan historical account transactions.
-1. `CREATE2` uses a custom *salt* to generate a contract address. This is just an arbitrary sequence of bytes chosen by a developer, which is used to make address generation deterministic (and reduces the chance of a collision).
+
+    `nonce`是一个账户特定的交易计数器。在新合约地址生成中使用`nonce`使得在其他合约或链下应用中计算地址变得困难，主要是因为要找到合约部署时的nonce，需要扫描历史账户交易。
+
+2. `CREATE2`使用自定义的*salt*来生成合约地址。这只是开发者选择的任意字节序列，用于使地址生成具有确定性（并减少冲突的机会）。
+
     ```
     KECCAK256(deployer.address, salt, contractCodeHash)
     ```
 
-We need to know the difference because Factory uses `CREATE2` when deploying Pool contracts so pools get unique and deterministic addresses that can be computed in other contracts and off-chain apps. Specifically, for salt, Factory computes a hash using these pool parameters:
+我们需要知道这个区别，因为Factory在部署Pool合约时使用`CREATE2`，这样池子就能获得唯一且确定性的地址，可以在其他合约和链下应用中计算。具体来说，对于salt，Factory使用这些池子参数计算哈希：
+
 ```solidity
 keccak256(abi.encodePacked(token0, token1, tickSpacing))
 ```
+token0和token1是池子代币的地址，而tickSpacing是我们接下来要学习的内容。
 
-`token0` and `token1` are the addresses of pool tokens, and `tickSpacing` is something we're going to learn about next.
+## Tick间距
 
-## Tick Spacing
+回想一下swap函数中的循环：
 
-Recall the loop in the `swap` function:
 ```solidity
 while (
     state.amountSpecifiedRemaining > 0 &&
@@ -45,26 +53,28 @@ while (
 }
 ```
 
-This loop finds initialized ticks that have some liquidity by iterating them in either of the directions. This iterating, however, is an expensive operation: if a tick is far away, the code would need to pass all the ticks between the current and the target one, which consumes gas. To make this loop more gas-efficient, Uniswap pools have the `tickSpacing` setting, which sets, as the name suggests, the distance between ticks: the wider the distance, the more gas-efficient swaps are.
+这个循环通过向任一方向迭代来找到具有一些流动性的已初始化的刻度。然而，这种迭代是一个昂贵的操作：如果一个刻度距离很远，代码需要经过当前刻度和目标刻度之间的所有刻度，这会消耗gas。为了使这个循环更加gas高效，Uniswap池子有`tickSpacing`设置，它设置了刻度之间的距离：距离越宽，交换的gas效率就越高。
 
-However, the wider the tick spacing the lower the precision. Low volatility pairs (e.g. stablecoin pairs) need higher precision because price movements are narrow in such pairs. Medium and high volatility pairs need lower precision since price movements are wide in such pairs. To handle this diversity, Uniswap allows to pick a tick spacing when a pair is deployed. Uniswap allows deployers to choose from these options: 10, 60, or 200. And we'll have only 10 and 60 for simplicity.
+然而，刻度间距越宽，精度就越低。低波动性对（例如稳定币对）需要更高的精度，因为这类对中的价格变动较小。中等和高波动性对需要较低的精度，因为这类对中的价格变动较大。为了处理这种多样性，Uniswap允许在部署对时选择刻度间距。Uniswap允许部署者从以下选项中选择：10、60或200。为了简单起见，我们只使用10和60。
 
-In technical terms, tick indexes can only be multiples of `tickSpacing`: if `tickSpacing` is 10, only multiples of 10 will be valid as tick indexes (10, 20, 5000, 5010, but not 8, 12, 5001, etc.). However, and this is important, this doesn't apply to the current price–it can still be any tick because we want it to be as precise as possible. `tickSpacing` is only applied to price ranges.
+从技术角度来说，刻度索引只能是`tickSpacing`的倍数：如果`tickSpacing`是10，那么只有10的倍数才能作为有效的刻度索引（10、20、5000、5010，但不能是8、12、5001等）。然而，这一点很重要，这并不适用于当前价格——它仍然可以是任何刻度，因为我们希望它尽可能精确。`tickSpacing`只应用于价格范围。
 
-Thus, each pool is uniquely identified by this set of parameters:
-1. `token0`,
-1. `token1`,
-1. `tickSpacing`;
+因此，每个池子都由这组参数唯一标识：
 
-> And, yes, there can be pools with the same tokens but different tick spacings.
+1. `token0`，
+2. `token1`，
+3. `tickSpacing`；
 
-The Factory contract uses this set of parameters as a unique identifier of a pool and passes it as a salt to generate a new pool contract address.
+> 是的，可以存在具有相同代币但不同刻度间距的池子。
 
-> From now on, we'll assume the tick spacing of 60 for all our pools, and we'll use 10 for stablecoin pairs. Please notice that only ticks divisible by these values can be flagged as initialized in the ticks bitmap. For example, only ticks -120, -60, 0, 60, 120, etc. can be initialized and used in liquidity ranges when tick spacing is 60.
+Factory合约使用这组参数作为池子的唯一标识符，并将其作为salt来生成新的池子合约地址。
 
-## Factory Implementation
+> 从现在开始，我们将假设所有池子的刻度间距为60，对于稳定币对我们将使用10。请注意，只有能被这些值整除的刻度才能在刻度位图中被标记为已初始化。例如，当刻度间距为60时，只有-120、-60、0、60、120等刻度可以被初始化并用于流动性范围。
 
-In the constructor of Factory, we need to initialize supported tick spacings:
+## Factory实现
+
+在Factory的构造函数中，我们需要初始化支持的刻度间距：
+
 ```solidity
 // src/UniswapV3Factory.sol
 contract UniswapV3Factory is IUniswapV3PoolDeployer {
@@ -77,9 +87,10 @@ contract UniswapV3Factory is IUniswapV3PoolDeployer {
     ...
 ```
 
-> We could've made them constants, but we'll need to have it as a mapping for a later milestone (tick spacings will have different swap fee amounts).
+> 我们本可以将它们设为常量，但为了后面的里程碑（不同的刻度间距将有不同的交换费用金额），我们需要将其作为映射。
 
-The Factory contract is a contract with only one function `createPool`. The function begins with the necessary checks we need to make before creating a pool:
+Factory合约是一个只有一个函数`createPool`的合约。该函数以我们在创建池子之前需要进行的必要检查开始：
+
 ```solidity
 // src/UniswapV3Factory.sol
 contract UniswapV3Factory is IUniswapV3PoolDeployer {
@@ -108,18 +119,20 @@ contract UniswapV3Factory is IUniswapV3PoolDeployer {
         ...
 ```
 
-Notice that this is the first time when we're sorting tokens:
+注意，这是我们第一次对代币进行排序：
+
 ```solidity
 (tokenX, tokenY) = tokenX < tokenY
     ? (tokenX, tokenY)
     : (tokenY, tokenX);
 ```
 
-From now on, we'll also expect pool token addresses to be sorted, i.e. `token0` goes before `token1` when sorted. We'll enforce this to make salt (and pool addresses) computation consistent.
+从现在开始，我们也会期望池子代币地址是经过排序的，即当排序时，`token0`在`token1`之前。我们强制执行这一点是为了使salt（和池子地址）的计算保持一致。
 
-> This change also affects how we deploy tokens in tests and the deployment script: we need to ensure that WETH is always `token0` to make price calculations simpler in Solidity (otherwise, we'd need to use fractional prices, like 1/5000). If WETH is not `token0` in your tests, change the order of token deployments.
+> 这个变化也影响了我们在测试和部署脚本中部署代币的方式：我们需要确保WETH始终是`token0`，以使Solidity中的价格计算更简单（否则，我们就需要使用分数价格，比如1/5000）。如果在你的测试中WETH不是`token0`，请更改代币部署的顺序。
 
-After that, we prepare pool parameters and deploy a pool:
+之后，我们准备池子参数并部署一个池子：
+
 ```solidity
 parameters = PoolParameters({
     factory: address(this),
@@ -137,7 +150,8 @@ pool = address(
 delete parameters;
 ```
 
-This piece looks weird because `parameters` is not used. Uniswap uses [Inversion of Control](https://en.wikipedia.org/wiki/Inversion_of_control) to pass parameters to a pool during deployment. Let's look at the updated Pool contract constructor:
+这段代码看起来很奇怪，因为`parameters`没有被使用。Uniswap使用[控制反转](https://en.wikipedia.org/wiki/Inversion_of_control)在部署期间将参数传递给池子。让我们看看更新后的Pool合约构造函数：
+
 ```solidity
 // src/UniswapV3Pool.sol
 contract UniswapV3Pool is IUniswapV3Pool {
@@ -151,13 +165,18 @@ contract UniswapV3Pool is IUniswapV3Pool {
 }
 ```
 
-Aha! Pool expects its deployer to implement the `IUniswapV3PoolDeployer` interface (which only defines the `parameters()` getter) and calls it in the constructor during deployment to get the parameters. This is what the flow looks like:
-1. `Factory`: defines `parameters` state variable (implements `IUniswapV3PoolDeployer`) and sets it before deploying a pool.
-1. `Factory`: deploys a pool.
-1. `Pool`: in the constructor, calls the `parameters()` function on its deployer and expects that pool parameters are returned.
-1. `Factory`: calls `delete parameters;` to clean up the slot of the `parameters` state variable and to reduce gas consumption. This is a temporary state variable that has a value only during a call to `createPool()`.
+啊哈！Pool期望其部署者实现`IUniswapV3PoolDeployer`接口（该接口只定义了`parameters()`getter），并在部署期间的构造函数中调用它来获取参数。这个流程看起来是这样的：
 
-After a pool is created, we keep it in the `pools` mapping (so it can be found by its tokens) and emit an event:
+1. `Factory`：定义`parameters`状态变量（实现`IUniswapV3PoolDeployer`）并在部署池子之前设置它。
+
+2. `Factory`：部署一个池子。
+
+3. `Pool`：在构造函数中，调用其部署者的`parameters()`函数，并期望返回池子参数。
+
+4. `Factory`：调用`delete parameters;`来清理`parameters`状态变量的槽位并减少gas消耗。这是一个临时状态变量，只在调用`createPool()`期间有值。
+
+在创建池子后，我们将其保存在`pools`映射中（这样可以通过其代币找到它）并发出一个事件：
+
 ```solidity
     pools[tokenX][tokenY][tickSpacing] = pool;
     pools[tokenY][tokenX][tickSpacing] = pool;
@@ -166,9 +185,9 @@ After a pool is created, we keep it in the `pools` mapping (so it can be found b
 }
 ```
 
-## Pool Initialization
+## 池子初始化
 
-As you have noticed from the code above, we no longer set `sqrtPriceX96` and `tick` in Pool's constructor–this is now done in a separate function, `initialize`, that needs to be called after the pool is deployed:
+正如你从上面的代码中注意到的，我们不再在Pool的构造函数中设置`sqrtPriceX96`和`tick`——这现在在一个单独的函数`initialize`中完成，需要在池子部署后调用：
 
 ```solidity
 // src/UniswapV3Pool.sol
@@ -181,7 +200,7 @@ function initialize(uint160 sqrtPriceX96) public {
 }
 ```
 
-So this is how we deploy pools now:
+所以这就是我们现在部署池子的方式：
 
 ```solidity
 UniswapV3Factory factory = new UniswapV3Factory();
@@ -189,9 +208,10 @@ UniswapV3Pool pool = UniswapV3Pool(factory.createPool(token0, token1, tickSpacin
 pool.initialize(sqrtP(currentPrice));
 ```
 
-## The `PoolAddress` Library
+## `PoolAddress`库
 
-Let's now implement a library that will help us calculate pool contract addresses from other contracts. This library will have only one function, `computeAddress`:
+现在让我们实现一个库，它将帮助我们从其他合约计算池子合约地址。这个库只有一个函数，`computeAddress`：
+
 ```solidity
 // src/lib/PoolAddress.sol
 library PoolAddress {
@@ -205,9 +225,10 @@ library PoolAddress {
         ...
 ```
 
-The function needs to know pool parameters (they're used to build a salt) and the Factory contract address. It expects the tokens to be sorted, which we discussed above.
+该函数需要知道池子参数（它们用于构建salt）和Factory合约地址。它期望代币是已排序的，我们之前讨论过这一点。
 
-Now, the core of the function:
+现在，函数的核心部分：
+
 ```solidity
 pool = address(
     uint160(
@@ -227,26 +248,26 @@ pool = address(
 );
 ```
 
-This is what `CREATE2` does under the hood to calculate the new contract address. Let's unwind it:
+这就是`CREATE2`在底层计算新合约地址时所做的。让我们来解析一下：
 
-1. first, we calculate salt (`abi.encodePacked(token0, token1, tickSpacing)`) and hash it;
-1. then, we obtain the Pool contract code (`type(UniswapV3Pool).creationCode`) and also hash it;
-1. then, we build a sequence of bytes that includes: `0xff`, the Factory contract address, hashed salt, and hashed Pool contract code;
-1. we then hash the sequence and convert it to an address.
+1. 首先，我们计算salt（`abi.encodePacked(token0, token1, tickSpacing)`）并对其进行哈希；
+2. 然后，我们获取Pool合约代码（`type(UniswapV3Pool).creationCode`）并也对其进行哈希；
+3. 接着，我们构建一个字节序列，包括：`0xff`、Factory合约地址、哈希后的salt和哈希后的Pool合约代码；
+4. 最后，我们对这个序列进行哈希并将其转换为地址。
 
-These steps implement contract address generation as it's defined in [EIP-1014](https://eips.ethereum.org/EIPS/eip-1014), which is the EIP that added the `CREATE2` opcode. Let's look closer at the values that constitute the hashed byte sequence:
-1. `0xff`, as defined in the EIP, is used to distinguish addresses generated by `CREATE` and `CREATE2`;
-1. `factory` is the address of the deployer, in our case the Factory contract;
-1. salt was discussed earlier–it uniquely identifies a pool;
-1. hashed contract code is needed to protect from collisions: different contracts can have the same salt, but their code
-hash will be different.
+这些步骤实现了合约地址生成，正如[EIP-1014](https://eips.ethereum.org/EIPS/eip-1014)中定义的那样，这个EIP添加了`CREATE2`操作码。让我们更仔细地看看构成哈希字节序列的值：
 
-So, according to this scheme, a contract address is a hash of the values that uniquely identify this contract, including its deployer, code, and unique parameters. We can use this function from anywhere to find a pool address without making any external calls and without querying the factory.
+1. `0xff`，如EIP中定义的，用于区分由`CREATE`和`CREATE2`生成的地址；
+2. `factory`是部署者的地址，在我们的情况下是Factory合约；
+3. salt之前已经讨论过——它唯一标识一个池子；
+4. 哈希后的合约代码是为了防止冲突：不同的合约可能有相同的salt，但它们的代码哈希会不同。
 
-## Simplified Interfaces of Manager and Quoter
+因此，根据这个方案，合约地址是唯一标识这个合约的值的哈希，包括其部署者、代码和唯一参数。我们可以从任何地方使用这个函数来找到池子地址，而无需进行任何外部调用，也无需查询工厂。
 
-In Manager and Quoter contracts, we no longer need to ask users for pool addresses! This makes interaction with the contracts easier because users don't need to know pool addresses, they only need to know tokens. However, users also need to specify tick spacing because it's included in the pool's salt.
+## Manager和Quoter的简化接口
 
-Moreover, we no longer need to ask users for the `zeroForOne` flag because we can now always figure it out thanks to tokens sorting. `zeroForOne` is true when "from token" is less than "to token", since the pool's `token0` is always less than `token1`. Likewise, `zeroForOne` is always false when "from token" is greater than "to token".
+在Manager和Quoter合约中，我们不再需要向用户询问池子地址！这使得与合约的交互更加容易，因为用户不需要知道池子地址，他们只需要知道代币。然而，用户还需要指定刻度间距，因为它包含在池子的salt中。
 
-> Addresses are hashes, and hashes are numbers, so we can say "less than" or "greater than" when comparing addresses.
+此外，我们不再需要向用户询问`zeroForOne`标志，因为现在我们可以通过代币排序来确定它。当"from token"小于"to token"时，`zeroForOne`为真，因为池子的`token0`总是小于`token1`。同样，当"from token"大于"to token"时，`zeroForOne`总是假。
+
+> 地址是哈希，而哈希是数字，所以我们可以在比较地址时说"小于"或"大于"。

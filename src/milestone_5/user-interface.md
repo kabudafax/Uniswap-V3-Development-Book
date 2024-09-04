@@ -1,10 +1,11 @@
-# User Interface
+# 用户界面
 
-In this milestone, we've added the ability to remove liquidity from a pool and collect accumulated fees. Thus, we need to reflect these changes in the user interface to allow users to remove liquidity.
+在这个里程碑中，我们添加了从池子中移除流动性和收集累积费用的能力。因此，我们需要在用户界面中反映这些变化，以允许用户移除流动性。
 
-## Fetching Positions
+## 获取头寸
 
-To let the user choose how much liquidity to remove, we first need to fetch the user's positions from a pool. To make this easier, we can add a helper function to the Manager contract, which will return the user position in a specific pool:
+为了让用户选择要移除多少流动性，我们首先需要从池子中获取用户的头寸。为了使这更容易，我们可以在Manager合约中添加一个辅助函数，该函数将返回用户在特定池子中的头寸：
+
 ```solidity
 function getPosition(GetPositionParams calldata params)
     public
@@ -37,9 +38,10 @@ function getPosition(GetPositionParams calldata params)
 }
 ```
 
-This will free us from calculating a pool address and a position key on the front end.
+这将使我们在前端免于计算池子地址和头寸密钥。
 
-Then, after the user has typed in a position range, we can try fetching a position:
+然后，在用户输入头寸范围后，我们可以尝试获取头寸：
+
 ```js
 const getAvailableLiquidity = debounce((amount, isLower) => {
   const lowerTick = priceToTick(isLower ? amount : lowerPrice);
@@ -60,9 +62,9 @@ const getAvailableLiquidity = debounce((amount, isLower) => {
 }, 500);
 ```
 
-## Getting Pool Address
+## 获取池子地址
 
-Since we need to call `burn` and `collect` on a pool, we still need to compute the pool's address on the front end. Recall that pool addresses are computed using the `CREATE2` opcode, which requires a salt and the hash of the contract's code. Luckily, Ether.js has the `getCreate2Address` function that allows to compute `CREATE2` in JavaScript:
+由于我们需要在池子上调用`burn`和`collect`，我们仍然需要在前端计算池子的地址。回想一下，池子地址是使用`CREATE2`操作码计算的，这需要一个盐值和合约代码的哈希。幸运的是，Ether.js有`getCreate2Address`函数，允许在JavaScript中计算`CREATE2`：
 
 ```js
 const sortTokens = (tokenA, tokenB) => {
@@ -84,21 +86,21 @@ const computePoolAddress = (factory, tokenA, tokenB, fee) => {
 }
 ```
 
-However, the pool's codehash has to be hard coded because we don't want to store its code on the front end to calculate the hash. So, we'll use Forge to get the hash:
+然而，池子的代码哈希必须硬编码，因为我们不想在前端存储其代码来计算哈希。所以，我们将使用Forge来获取哈希：
 
 ```shell
 $ forge inspect UniswapV3Pool bytecode| xargs cast keccak 
 0x...
 ```
 
-And then use the output value in a JS constant:
+然后在JS常量中使用输出值：
 ```js
 const poolCodeHash = "0x9dc805423bd1664a6a73b31955de538c338bac1f5c61beb8f4635be5032076a2";
 ```
 
-## Removing Liquidity
+## 移除流动性
 
-After obtaining the liquidity amount and the pool address, we're ready to call `burn`:
+在获得流动性数量和池子地址后，我们准备调用`burn`：
 
 ```js
 const removeLiquidity = (e) => {
@@ -130,5 +132,4 @@ const removeLiquidity = (e) => {
     .catch(err => console.error(err));
 }
 ```
-
-If burning was successful, we immediately call `collect` to collect the token amounts that were freed during burning.
+如果燃烧成功，我们立即调用`collect`来收集在燃烧过程中释放的代币数量。
