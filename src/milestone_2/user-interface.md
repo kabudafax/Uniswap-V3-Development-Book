@@ -1,6 +1,6 @@
-# User Interface
+# 用户界面
 
-Let's make our web app work more like a real DEX. We can now remove hardcoded swap amounts and let users type arbitrary amounts. Moreover, we can now let users swap in both directions, so we also need a button to swap the token inputs.  After updating, the swap form will look like:
+让我们使我们的网页应用更像一个真正的去中心化交易所（DEX）。我们现在可以移除硬编码的交换金额，让用户输入任意金额。此外，我们现在可以让用户在两个方向上进行交换，所以我们还需要一个按钮来交换代币输入。更新后，交换表单将看起来像这样：
 
 ```jsx
 <form className="SwapForm">
@@ -20,9 +20,9 @@ Let's make our web app work more like a real DEX. We can now remove hardcoded sw
 </form>
 ```
 
-Each input has an amount assigned to it depending on the swap direction controlled by the `zeroForOne` state variable. The lower input field is always read-only because its value is calculated by the Quoter contract.
+每个输入框都有一个与之关联的金额，这取决于由`zeroForOne`状态变量控制的交换方向。下方的输入框始终是只读的，因为它的值是由Quoter合约计算得出的。
 
-The `setAmount_` function does two things: it updates the value of the top input and calls the Quoter contract to calculate the value of the lower input:
+`setAmount_`函数做两件事：它更新上方输入框的值，并调用Quoter合约来计算下方输入框的值：
 
 ```js
 const updateAmountOut = debounce((amount) => {
@@ -53,7 +53,6 @@ const setAmount_ = (setAmountFn) => {
   }
 }
 ```
+注意在`quoter`上调用的`callStatic`——这就是我们在上一章讨论的内容：我们需要强制Ethers.js进行静态调用。由于`quote`不是`pure`或`view`函数，Ethers.js会尝试在交易中调用`quote`。
 
-Notice the `callStatic` called on `quoter`–this is what we discussed in the previous chapter: we need to force Ethers.js to make a static call. Since `quote` is not a `pure` or `view` function, Ethers.js will try to call `quote` in a transaction.
-
-And that's it! The UI now allows us to specify arbitrary amounts and swap in either direction!
+就是这样！用户界面现在允许我们指定任意金额并在任一方向进行交换！

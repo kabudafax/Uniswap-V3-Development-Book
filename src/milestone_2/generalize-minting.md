@@ -1,13 +1,13 @@
-# Generalized Minting
+# 通用铸造
 
-Now, we're ready to update the `mint` function so we don't need to hard code values anymore and can calculate them instead.
+现在，我们准备更新`mint`函数，这样我们就不需要再硬编码值，而可以计算它们了。
 
+## 索引已初始化的Ticks
 
-## Indexing Initialized Ticks
+回想一下，在`mint`函数中，我们更新TickInfo映射以存储ticks处可用流动性的信息。现在，我们还需要在位图索引中索引新初始化的ticks——我们稍后将在交换过程中使用此索引来查找下一个已初始化的tick。
 
-Recall that, in the `mint` function, we update the TickInfo mapping to store information about available liquidity at ticks.  Now, we also need to index newly initialized ticks in the bitmap index–we'll later use this index to find the next initialized tick during swapping.
+首先，我们需要更新`Tick.update`函数：
 
-First, we need to update the `Tick.update` function:
 ```solidity
 // src/lib/Tick.sol
 function update(
@@ -21,9 +21,10 @@ function update(
 }
 ```
 
-It now returns a `flipped` flag, which is set to true when liquidity is added to an empty tick or when entire liquidity is removed from a tick.
+现在它返回一个`flipped`标志，当向空的tick添加流动性或从tick中移除全部流动性时，该标志会被设置为true。
 
-Then, in the `mint` function, we update the bitmap index:
+然后，在`mint`函数中，我们更新位图索引：
+
 ```solidity
 // src/UniswapV3Pool.sol
 ...
@@ -40,22 +41,24 @@ if (flippedUpper) {
 ...
 ```
 
-> Again, we're setting tick spacing to 1 until we introduce different values in Milestone 4.
+> 再次强调，我们将tick间距设置为1，直到我们在里程碑4中引入不同的值。
 
-## Token Amounts Calculation
+## 代币数量计算
 
-The biggest change in the `mint` function is switching to tokens amount calculation. In Milestone 1, we hard-coded these values:
+`mint`函数中最大的变化是切换到代币数量计算。在里程碑1中，我们硬编码了这些值：
+
 ```solidity
     amount0 = 0.998976618347425280 ether;
     amount1 = 5000 ether;
 ```
 
-And now we're going to calculate them in Solidity using formulas from Milestone 1. Let's recall those formulas:
+现在我们将使用里程碑1中的公式在Solidity中计算它们。让我们回顾一下这些公式：
 
 $$\Delta x = \frac{L(\sqrt{p(i_u)} - \sqrt{p(i_c)})}{\sqrt{p(i_u)}\sqrt{p(i_c)}}$$
 $$\Delta y = L(\sqrt{p(i_c)} - \sqrt{p(i_l)})$$
 
-$\Delta x$ is the amount of `token0`, or token $x$. Let's implement it in Solidity:
+$\Delta x$是`token0`或代币$x$的数量。让我们在Solidity中实现它：
+
 ```solidity
 // src/lib/Math.sol
 function calcAmount0Delta(
@@ -79,11 +82,12 @@ function calcAmount0Delta(
 }
 ```
 
-> This function is identical to `calc_amount0` in our Python script.
+> 这个函数与我们Python脚本中的`calc_amount0`完全相同。
 
-The first step is to sort the prices to ensure we don't underflow when subtracting. Next, we convert `liquidity` to a Q96.64 number by multiplying it by 2**96. Next, according to the formula, we multiply it by the difference of the prices and divide it by the bigger price. Then, we divide by the smaller price. The order of division doesn't matter, but we want to have two divisions because the multiplication of prices can overflow.
+第一步是对价格进行排序，以确保在相减时不会发生下溢。接下来，我们将`liquidity`转换为Q96.64数，方法是将其乘以2**96。然后，根据公式，我们将其乘以价格的差值，并除以较大的价格。之后，我们再除以较小的价格。除法的顺序并不重要，但我们想要进行两次除法，因为价格的乘法可能会溢出。
 
-We're using `mulDivRoundingUp` to multiply and divide in one operation. This function is based on `mulDiv` from `PRBMath`:
+我们使用`mulDivRoundingUp`来在一个操作中完成乘法和除法。这个函数基于`PRBMath`中的`mulDiv`：
+
 ```solidity
 function mulDivRoundingUp(
     uint256 a,
@@ -98,9 +102,10 @@ function mulDivRoundingUp(
 }
 ```
 
-`mulmod` is a Solidity function that multiplies two numbers (`a` and `b`), divides the result by `denominator`, and returns the remainder. If the remainder is positive, we round the result up.
+`mulmod`是一个Solidity函数，它将两个数（`a`和`b`）相乘，将结果除以`denominator`，并返回余数。如果余数为正，我们就向上取整结果。
 
-Next, $\Delta y$:
+接下来是$\Delta y$：
+
 ```solidity
 function calcAmount1Delta(
     uint160 sqrtPriceAX96,
@@ -118,11 +123,12 @@ function calcAmount1Delta(
 }
 ```
 
-> This function is identical to `calc_amount1` in our Python script.
+> 这个函数与我们Python脚本中的`calc_amount1`完全相同。
 
-Again, we're using `mulDivRoundingUp` to avoid overflows during multiplication.
+同样，我们使用`mulDivRoundingUp`来避免乘法过程中的溢出。
 
-And that's it! We can now use the functions to calculate token amounts:
+就是这样！我们现在可以使用这些函数来计算代币数量：
+
 ```solidity
 // src/UniswapV3Pool.sol
 function mint(...) {
@@ -143,5 +149,4 @@ function mint(...) {
     ...
 }
 ```
-
-Everything else remains the same. You'll need to update the amounts in the pool tests, they'll be slightly different due to rounding.
+其他一切保持不变。你需要更新池测试中的数量，由于四舍五入，它们会略有不同。

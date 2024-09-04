@@ -1,10 +1,10 @@
-# Generalized Swapping
+# 通用交换
 
-This will be the hardest chapter of this milestone. Before updating the code, we need to understand how the algorithm of swapping in Uniswap V3 works.
+这将是本里程碑中最困难的章节。在更新代码之前，我们需要理解Uniswap V3中交换算法的工作原理。
 
-You can think of a swap as of filling of an order: a user submits an order to buy a specified amount of tokens from a pool.  The pool will use the available liquidity to "convert" the input amount into an output amount of the other token. If there's not enough liquidity in the current price range, it'll try to find liquidity in other price ranges (using the function we implemented in the previous chapter).
+你可以将交换视为填充订单：用户向池子提交一个订单，以购买指定数量的代币。池子将使用可用的流动性将输入数量"转换"为另一种代币的输出数量。如果当前价格范围内没有足够的流动性，它将尝试在其他价格范围内寻找流动性（使用我们在上一章实现的函数）。
 
-We're now going to implement this logic in the `swap` function, however going to stay only within the current price range for now–we'll implement cross-tick swaps in the next milestone.
+我们现在将在`swap`函数中实现这个逻辑，但目前仅限于当前价格范围内——我们将在下一个里程碑中实现跨tick交换。
 
 ```solidity
 function swap(
@@ -16,13 +16,13 @@ function swap(
     ...
 ```
 
-In the `swap` function, we add two new parameters: `zeroForOne` and `amountSpecified`. `zeroForOne` is the flag that controls swap direction: when `true`, `token0` is traded in for `token1`; when `false,` it's the opposite. For example, if `token0` is ETH and `token1` is USDC, setting `zeroForOne` to `true` means buying USDC for ETH. `amountSpecified` is the number of tokens the user wants to sell. 
+在`swap`函数中，我们添加了两个新参数：`zeroForOne`和`amountSpecified`。`zeroForOne`是控制交换方向的标志：当为`true`时，`token0`被交换成`token1`；当为`false`时，则相反。例如，如果`token0`是ETH，`token1`是USDC，将`zeroForOne`设置为`true`意味着用ETH购买USDC。`amountSpecified`是用户想要出售的代币数量。
 
-## Filling Orders
+## 填充订单
 
-Since, in Uniswap V3, liquidity is stored in multiple price ranges, the Pool contract needs to find all liquidity that's required to "fill an order" from the user. This is done via iterating over initialized ticks in a direction chosen by the user.
+由于在Uniswap V3中，流动性存储在多个价格范围内，Pool合约需要找到所有满足用户"填充订单"所需的流动性。这是通过按用户选择的方向迭代已初始化的ticks来完成的。
 
-Before continuing, we need to define two new structures:
+在继续之前，我们需要定义两个新的结构：
 ```solidity
 struct SwapState {
     uint256 amountSpecifiedRemaining;
@@ -40,11 +40,11 @@ struct StepState {
 }
 ```
 
-`SwapState` maintains the current swap's state. `amountSpecifiedRemaining` tracks the remaining amount of tokens that need to be bought by the pool. When it's zero, the swap is done. `amountCalculated` is the out amount calculated by the contract. `sqrtPriceX96` and `tick` are the new current price and tick after a swap is done.
+`SwapState`维护当前交换的状态。`amountSpecifiedRemaining`跟踪池子需要购买的剩余代币数量。当它为零时，交换完成。`amountCalculated`是合约计算的输出数量。`sqrtPriceX96`和`tick`是交换完成后的新当前价格和tick。
 
-`StepState` maintains the current swap step's state. This structure tracks the state of **one iteration** of an "order filling".  `sqrtPriceStartX96` tracks the price the iteration begins with. `nextTick` is the next initialized tick that will provide liquidity for the swap and `sqrtPriceNextX96` is the price at the next tick. `amountIn` and `amountOut` are amounts that can be provided by the liquidity of the current iteration.
+`StepState`维护当前交换步骤的状态。这个结构跟踪"填充订单"的**一次迭代**的状态。`sqrtPriceStartX96`跟踪迭代开始时的价格。`nextTick`是将为交换提供流动性的下一个已初始化tick，`sqrtPriceNextX96`是下一个tick的价格。`amountIn`和`amountOut`是当前迭代的流动性可以提供的数量。
 
-> After we implement cross-tick swaps (that is, swaps that happen across multiple price ranges), the idea of iterating will be clearer.
+> 在我们实现跨tick交换（即发生在多个价格范围内的交换）之后，迭代的概念将会更加清晰。
 
 ```solidity
 // src/UniswapV3Pool.sol
@@ -61,8 +61,7 @@ function swap(...) {
     ...
 ```
 
-Before filling an order, we initialize a `SwapState` instance. We'll loop until `amountSpecifiedRemaining` is 0, which will mean that the pool has enough liquidity to buy `amountSpecified` tokens from the user.
-
+在填充订单之前，我们初始化一个`SwapState`实例。我们将循环直到`amountSpecifiedRemaining`为0，这意味着池子有足够的流动性从用户那里购买`amountSpecified`数量的代币。
 ```solidity
 ...
 while (state.amountSpecifiedRemaining > 0) {
@@ -79,7 +78,7 @@ while (state.amountSpecifiedRemaining > 0) {
     step.sqrtPriceNextX96 = TickMath.getSqrtRatioAtTick(step.nextTick);
 ```
 
-In the loop, we set up a price range that should provide liquidity for the swap. The range is from `state.sqrtPriceX96` to `step.sqrtPriceNextX96`, where the latter is the price at the next initialized tick (as returned by `nextInitializedTickWithinOneWord`–we know this function from a previous chapter).
+在循环中，我们设置一个应该为交换提供流动性的价格范围。这个范围从`state.sqrtPriceX96`到`step.sqrtPriceNextX96`，其中后者是下一个已初始化tick的价格（由`nextInitializedTickWithinOneWord`返回——我们在前一章节中了解了这个函数）。
 
 ```solidity
 (state.sqrtPriceX96, step.amountIn, step.amountOut) = SwapMath
@@ -91,7 +90,7 @@ In the loop, we set up a price range that should provide liquidity for the swap.
     );
 ```
 
-Next, we're calculating the amounts that can be provided by the current price range, and the new current price the swap will result in.
+接下来，我们计算当前价格范围可以提供的数量，以及交换将导致的新的当前价格。
 
 ```solidity
     state.amountSpecifiedRemaining -= step.amountIn;
@@ -100,11 +99,11 @@ Next, we're calculating the amounts that can be provided by the current price ra
 }
 ```
 
-The final step in the loop is updating the SwapState. `step.amountIn` is the number of tokens the price range can buy from the user; `step.amountOut` is the related number of the other token the pool can sell to the user. `state.sqrtPriceX96` is the current price that will be set after the swap (recall that trading changes current price).
+循环的最后一步是更新SwapState。`step.amountIn`是价格范围可以从用户那里购买的代币数量；`step.amountOut`是池子可以卖给用户的相关的另一种代币的数量。`state.sqrtPriceX96`是交换后将设置的当前价格（回想一下，交易会改变当前价格）。
 
-## SwapMath Contract
+## SwapMath合约
 
-Let's look closer at `SwapMath.computeSwapStep`.
+让我们仔细看看`SwapMath.computeSwapStep`。
 
 ```solidity
 // src/lib/SwapMath.sol
@@ -125,7 +124,7 @@ function computeSwapStep(
     ...
 ```
 
-This is the core logic of swapping. The function calculates swap amounts within one price range and respecting available liquidity. It'll return: the new current price and input and output token amounts. Even though the input amount is provided by the user, we still calculate it to know how much of the user-specified input amount was processed by one call to `computeSwapStep`.
+这是交换的核心逻辑。该函数在一个价格范围内计算交换数量，并考虑可用的流动性。它将返回：新的当前价格以及输入和输出代币数量。尽管输入数量是由用户提供的，我们仍然计算它，以了解一次`computeSwapStep`调用处理了用户指定输入数量的多少。
 
 ```solidity
 bool zeroForOne = sqrtPriceCurrentX96 >= sqrtPriceTargetX96;
@@ -138,9 +137,9 @@ sqrtPriceNextX96 = Math.getNextSqrtPriceFromInput(
 );
 ```
 
-By checking the price, we can determine the direction of the swap. Knowing the direction, we can calculate the price after swapping the `amountRemaining` of tokens. We'll return to this function below.
+通过检查价格，我们可以确定交换的方向。知道方向后，我们可以计算交换`amountRemaining`代币后的价格。我们稍后会回到这个函数。
 
-After finding the new price, we can calculate the input and output amounts of the swap using the function we already have ( the same functions we used to calculate token amounts from liquidity in the `mint` function):
+在找到新价格后，我们可以使用我们已有的函数计算交换的输入和输出数量（这些函数与我们在`mint`函数中用于从流动性计算代币数量的函数相同）：
 ```solidity
 amountIn = Math.calcAmount0Delta(
     sqrtPriceCurrentX96,
@@ -154,20 +153,21 @@ amountOut = Math.calcAmount1Delta(
 );
 ```
 
-And swap the amounts if the direction is opposite:
+如果方向相反，则交换这些数量：
 ```solidity
 if (!zeroForOne) {
     (amountIn, amountOut) = (amountOut, amountIn);
 }
 ```
 
-That's it for `computeSwapStep`!
+这就是`computeSwapStep`的全部内容！
 
-## Finding Price by Swap Amount
+## 通过交换数量找到价格
 
-Let's now look at `Math.getNextSqrtPriceFromInput`–the function calculates a $\sqrt{P}$ given another $\sqrt{P}$, liquidity, and input amount. It tells what the price will be after swapping the specified input amount of tokens, given the current price and liquidity.
+现在让我们看看`Math.getNextSqrtPriceFromInput`——这个函数根据另一个$\sqrt{P}$、流动性和输入数量计算$\sqrt{P}$。它告诉我们在给定当前价格和流动性的情况下，交换指定输入数量的代币后价格将会是多少。
 
-The good news is that we already know the formulas: recall how we calculated `price_next` in Python:
+好消息是我们已经知道这些公式：回想一下我们在Python中是如何计算`price_next`的：
+
 ```python
 # When amount_in is token0
 price_next = int((liq * q96 * sqrtp_cur) // (liq * q96 + amount_in * sqrtp_cur))
@@ -175,7 +175,7 @@ price_next = int((liq * q96 * sqrtp_cur) // (liq * q96 + amount_in * sqrtp_cur))
 price_next = sqrtp_cur + (amount_in * q96) // liq
 ```
 
-We're going to implement this in Solidity:
+我们将在Solidity中实现这个：
 ```solidity
 // src/lib/Math.sol
 function getNextSqrtPriceFromInput(
@@ -198,8 +198,7 @@ function getNextSqrtPriceFromInput(
 }
 ```
 
-The function handles swapping in both directions. Since calculations are different, we'll implement them in separate functions.
-
+这个函数处理两个方向的交换。由于计算方法不同，我们将在单独的函数中实现它们。
 ```solidity
 function getNextSqrtPriceFromAmount0RoundingUp(
     uint160 sqrtPriceX96,
@@ -225,15 +224,18 @@ function getNextSqrtPriceFromAmount0RoundingUp(
         );
 }
 ```
-In this function, we're implementing two formulas. At the first `return`, it implements the same formula we implemented in Python. This is the most precise formula, but it can overflow when multiplying `amountIn` by `sqrtPriceX96`. The formula is (we discussed it in "Output Amount Calculation"):
+在这个函数中，我们实现了两个公式。在第一个`return`处，它实现了我们在Python中实现的相同公式。这是最精确的公式，但在将`amountIn`乘以`sqrtPriceX96`时可能会溢出。这个公式是（我们在"输出数量计算"中讨论过）：
+
 $$\sqrt{P_{target}} = \frac{\sqrt{P}L}{\Delta x \sqrt{P} + L}$$
 
-When it overflows, we use an alternative formula, which is less precise:
+当它溢出时，我们使用一个替代公式，这个公式精度较低：
+
 $$\sqrt{P_{target}} = \frac{L}{\Delta x + \frac{L}{\sqrt{P}}}$$
 
-Which is simply the previous formula with the numerator and the denominator divided by $\sqrt{P}$ to get rid of the multiplication in the numerator.
+这实际上就是将前一个公式的分子和分母都除以$\sqrt{P}$，以消除分子中的乘法。
 
-The other function has simpler math:
+另一个函数的数学计算更简单：
+
 ```solidity
 function getNextSqrtPriceFromAmount1RoundingDown(
     uint160 sqrtPriceX96,
@@ -245,21 +247,18 @@ function getNextSqrtPriceFromAmount1RoundingDown(
         uint160((amountIn << FixedPoint96.RESOLUTION) / liquidity);
 }
 ```
+## 完成交换
 
-## Finishing the Swap
+现在，让我们回到`swap`函数并完成它。
 
-Now, let's return to the `swap` function and finish it.
-
-By this moment, we have looped over the next initialized ticks, filled `amountSpecified` specified by the user, calculated input and amount amounts, and found a new price and tick. Since, in this milestone, we're implementing only swaps within one price range, this is enough. We now need to update the contract's state, send tokens to the user, and get tokens in exchange.
-
-
+到目前为止，我们已经循环遍历了下一个初始化的ticks，填充了用户指定的`amountSpecified`，计算了输入和输出数量，并找到了新的价格和tick。由于在这个里程碑中，我们只实现一个价格范围内的交换，这就足够了。现在我们需要更新合约的状态，向用户发送代币，并获取交换的代币。
 ```solidity
 if (state.tick != slot0_.tick) {
     (slot0.sqrtPriceX96, slot0.tick) = (state.sqrtPriceX96, state.tick);
 }
 ```
 
-First, we set a new price and tick. Since this operation writes to the contract's storage, we want to do it only if the new tick is different, to optimize gas consumption.
+首先，我们设置新的价格和tick。由于这个操作会写入合约的存储，为了优化gas消耗，我们只在新的tick不同时才执行这个操作。
 
 ```solidity
 (amount0, amount1) = zeroForOne
@@ -273,7 +272,7 @@ First, we set a new price and tick. Since this operation writes to the contract'
     );
 ```
 
-Next, we calculate swap amounts based on the swap direction and the amounts calculated during the swap loop.
+接下来，我们根据交换方向和在交换循环中计算的数量来计算交换金额。
 
 ```solidity
 if (zeroForOne) {
@@ -301,12 +300,12 @@ if (zeroForOne) {
 }
 ```
 
-Next, we exchange tokens with the user, depending on the swap direction. This piece is identical to what we had in Milestone 2, only handling of the other swap direction was added.
+接下来，我们根据交换方向与用户交换代币。这部分与里程碑2中的内容相同，只是增加了处理另一个交换方向的逻辑。
 
-That's it! Swapping is done!
+就是这样！交换完成了！
 
-## Testing
+## 测试
 
-The tests won't change significantly, we only need to pass the `amountSpecified` and `zeroForOne` to the `swap` function. Output amount will change insignificantly though, because it's now calculated in Solidity.
+测试不会有太大变化，我们只需要将`amountSpecified`和`zeroForOne`传递给`swap`函数。不过，输出数量会有微小的变化，因为现在是在Solidity中计算的。
 
-We can now test swapping in the opposite direction! I'll leave this for you, as homework (just be sure to choose a small input amount so the whole swap can be handled by our single price range). Don't hesitate to peek at [my tests](https://github.com/Jeiwan/uniswapv3-code/blob/milestone_2/test/UniswapV3Pool.t.sol) if this feels difficult!
+我们现在可以测试相反方向的交换了！我将把这个作为作业留给你（只需确保选择一个小的输入数量，以便我们的单一价格范围可以处理整个交换）。如果感到困难，不要犹豫查看[我的测试](https://github.com/Jeiwan/uniswapv3-code/blob/milestone_2/test/UniswapV3Pool.t.sol)！
