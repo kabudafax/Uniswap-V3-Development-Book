@@ -1,4 +1,4 @@
-# Uniswap V3 开发书籍
+# Uniswap V3 开发手册
 
 <p align="center">
 <img src="/src/images/cover.png" alt="Uniswap V3 开发书籍封面" width="360"/>
@@ -8,6 +8,10 @@
 <p align="center">
 👉&nbsp;<a href="https://uniswapv3book.com/">在线阅读</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="https://uniswapv3book.com/print.html">打印或保存为PDF</a>&nbsp;👈
 </p>
+
+*本书翻译自[Uniswap V3 Development Book](https://github.com/Jeiwan/uniswapv3-book)，非常感谢作者 Jeiwan 的辛勤工作。现将其翻译成中文，方便大家学习。希望在defi领域有更多的朋友加入，一起学习，一起进步。*
+
+*由于本人水平有限，翻译校对难免有错误，欢迎大家指正。*
 
 本书将教你如何开发一个高级去中心化应用！具体来说，我们将构建一个[Uniswap V3](https://uniswap.org/)的克隆版，这是一个去中心化交易所。
 
